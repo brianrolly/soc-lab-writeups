@@ -192,42 +192,50 @@
 
   <section>
     <p class="kicker">The evidence chain</p>
-    <h2>Every claim, a query and its output</h2>
-    <p class="lede">A controlled <span class="mono">nmap</span> from an authorized lab host against a monitored VIP. All output verbatim from the indexer.</p>
+    <h2>The scan, then what the SIEM saw</h2>
+    <p class="lede">Each detection pairs the exact <span class="mono">nmap</span> that generated it with raw output from the indexer. Scans run from an authorized lab host against a monitored VIP.</p>
 
     <div class="steps">
+
       <div class="step">
-        <div class="step-head"><span class="step-num">01</span><h3 class="step-title">The monitor wrote a real alert</h3></div>
-        <div class="term siem"><div class="term-head"><span class="term-host siem">alerting index</span><span class="term-what">alert document</span></div>
-        <pre><span class="out">{ "trigger": "At least 30 unique destination ports … in 5 minutes",
-  "bucket_keys": ["<span class="hl-atk">198.51.100.20</span>", "tcp", "S"],
-  "state": "COMPLETED", "severity": "2" }</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>Precise attribution — source, protocol, SYN flag — no ambiguity.</span></div>
+        <div class="step-head"><span class="step-num">01</span><h3 class="step-title">Controlled SYN scan → fires</h3><span class="host-tag atk">nmap</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">100-port SYN scan</span></div>
+        <pre><span class="cmd">nmap -sS -Pn -n -T4 --max-retries 1 -p 41001-41100 198.51.100.36</span>
+<span class="out">All 100 scanned ports on 198.51.100.36 are in ignored states.
+Not shown: 100 filtered tcp ports (no-response)
+Nmap done: 1 IP address (1 host up) scanned in 3.07 seconds</span></pre></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what the monitor recorded</span></div>
+        <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.20</span>","tcp","S"]   state: COMPLETED
+raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30   crossed: true</span></pre></div>
+        <div class="proves"><span class="arw">proves</span><span>91 unique ports in one 5-minute window vs a threshold of 30 — fired, with exact attribution.</span></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">02</span><h3 class="step-title">The bucket genuinely crossed the threshold</h3></div>
-        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">raw firewall events</span></div>
-        <pre><span class="out">{ "raw_events": 171, "unique_ports": <span class="hl-trust">91</span>, "threshold": 30, "crossed": true }
-
-09:04:43  src=198.51.100.20  dst=198.51.100.36:41074  flags=S  block  rule=100340/L6
-09:04:43  src=198.51.100.20  dst=198.51.100.36:41067  flags=S  block  rule=100341/L8</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>91 unique ports vs a threshold of 30 — grounded in individual blocked packets.</span></div>
+        <div class="step-head"><span class="step-num">02</span><h3 class="step-title">Stealth flags → Suricata covers them</h3><span class="host-tag atk">nmap</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">FIN / Xmas / NULL</span></div>
+        <pre><span class="cmd">nmap -sF -Pn -n -p 41026-41050 198.51.100.36   # FIN</span>
+<span class="cmd">nmap -sX -Pn -n -p 41051-41075 198.51.100.36   # Xmas</span>
+<span class="cmd">nmap -sN -Pn -n -p 41076-41100 198.51.100.36   # NULL</span></pre></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">detection</span></div>
+        <pre><span class="out">rule=100346/L10  TCP FIN scan
+rule=100347/L10  TCP Xmas scan
+rule=100348/L10  TCP NULL scan
+<span class="hl-atk"># cardinality monitor: 0</span> — the firewall never logs these flags</span></pre></div>
+        <div class="proves"><span class="arw">proves</span><span>The monitor is blind to flags the firewall drops silently — but Suricata is not. Every flag one layer misses, the other logs. <b>Exactly complementary.</b></span></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">03</span><h3 class="step-title">A complementary layer catches what this cannot</h3></div>
-        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">stealth scan</span></div>
-        <pre><span class="out">rule=100346/L10  OPNsense Suricata detected a TCP FIN scan</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>The firewall never logs FIN/Xmas/NULL, so Suricata covers them. Every flag the firewall drops has a signature; every type Suricata lacks, the firewall logs. <b>Exactly complementary.</b></span></div>
+        <div class="step-head"><span class="step-num">03</span><h3 class="step-title">Slow, paced scan → the honest gap</h3><span class="host-tag atk">nmap</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">one probe per port, spaced</span></div>
+        <pre><span class="cmd">for p in 42001..42008; do
+  nmap -sS -Pn -n --max-retries 0 -p $p 198.51.100.36
+  sleep 45
+done</span></pre></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what fired</span></div>
+        <pre><span class="out">rules fired: <span class="hl-atk">100340/L6 only</span>   highest level reached: 6</span></pre></div>
+        <div class="proves"><span class="arw">proves</span><span>Paced under every threshold, a slow scan raises only the level-6 floor — no elevated alert. (A <em>careless</em> slow scan using nmap defaults trips the firewall’s rate rules to L12; the gap only opens for one that suppresses retransmits and paces down.) Documented, not hidden — it defines the long-window monitor to build next.</span></div>
       </div>
 
-      <div class="step">
-        <div class="step-head"><span class="step-num">04</span><h3 class="step-title">The honest gap — a perfectly paced slow scan</h3></div>
-        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">slow scan window</span></div>
-        <pre><span class="out">rules fired: <span class="hl-atk">100340/L6 only</span>   — highest level reached: 6</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>A slow scan evades every elevated layer, leaving only the level-6 floor. Documented, not hidden — it defines the requirement for a long-window monitor.</span></div>
-      </div>
     </div>
   </section>
 
