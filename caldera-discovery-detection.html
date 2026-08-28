@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Detection engineering and purple-team writeups from a self-built home SOC lab.">
-<title>SOC-Lab Writeups</title>
+<meta name="description" content="CALDERA-emulated Linux discovery caught by auditd + Wazuh, mapped to MITRE ATT&CK.">
+<title>Endpoint Discovery Detection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -164,89 +164,53 @@
 </head>
 <body>
 <div class="wrap">
+  <p style="padding-top:22px;margin:0"><a href="./" style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.04em;color:var(--muted);text-decoration:none">&larr; Portfolio</a></p>
   <header class="mast">
-    <p class="eyebrow">SOC-Lab<span class="sep">/</span>Detection Engineering</p>
-    <h1>Security Writeups</h1>
-    <p class="thesis">Hands-on detection engineering and purple-team work from a self-built home SOC lab — OPNsense perimeter, Suricata IDS, Wazuh/OpenSearch SIEM. Each piece backs its claims with <b>queries and raw output</b>, not assertion.</p>
+    <p class="eyebrow">Detection Engineering<span class="sep">/</span>Endpoint<span class="sep">/</span>Portfolio</p>
+    <h1>Catching Discovery on the Endpoint</h1>
+    <p class="thesis">Adversary emulation with <b>CALDERA</b>, endpoint telemetry from <b>auditd</b>, and detection in <b>Wazuh</b> — emulate the discovery an intruder runs in their first minutes on a host, then prove every command raises a MITRE-mapped alert.</p>
     <div class="meta">
-      <span class="chip"><b>Perimeter</b> OPNsense · Suricata</span>
-      <span class="chip"><b>SIEM</b> Wazuh · OpenSearch</span>
-      <span class="chip"><b>Emulation</b> CALDERA</span>
+      <span class="chip"><b>Emulation</b> CALDERA · Sandcat</span>
+      <span class="chip"><b>Telemetry</b> Linux auditd</span>
+      <span class="chip ok"><span class="dot"></span>9 rules · 8 techniques</span>
     </div>
   </header>
-
   <hr class="rule">
-
   <section>
-    <p class="kicker">Writeups</p>
-    <div class="steps">
-
-      <a href="rogue-agent-log-injection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Rogue-Agent Log Injection</h3>
-          <span class="host-tag atk">purple team</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Full kill chain with verbatim output, plus the verified fix.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1078 · T1565.001 · T1070 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="vertical-scan-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Vertical Scan Detection</h3>
-          <span class="host-tag siem">detection eng</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A measurement-driven port-scan detector on OPNsense + Wazuh. Threshold tuned from a week of real traffic, validated against controlled and real-world scans, with the evasion gaps mapped honestly.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="caldera-discovery-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Catching Discovery on the Endpoint</h3>
-          <span class="host-tag siem">endpoint</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">CALDERA adversary emulation caught at the host by auditd + Wazuh. Nine rules, eight ATT&CK techniques — endpoint detection to complement the perimeter and SIEM work.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">Discovery · T1033+ — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="modat-distributed-scanner.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Scanner My Detection Couldn’t See</h3>
-          <span class="host-tag atk">threat intel</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A real commercial internet-wide scanner living in the logs — 79 IPs, one netblock, splitting targets to stay under threshold. Characterized, with the honest reason per-source detection misses it.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="indexer-heap-undersizing.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--muted)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Query That Exposed a Broken SIEM</h3>
-          <span class="host-tag" style="background:var(--surface-2);color:var(--muted);border:1px solid var(--line)">siem ops</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host — a capacity defect with no symptom that would have silently broken every dashboard. Found, diagnosed, fixed, verified.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--muted)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="operational-runbooks.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">From Alert to Action</h3>
-          <span class="host-tag siem">response</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">The runbooks that turn a firing alert into a decision: a high-severity Linux IR workflow, and a scan-triage guide for reading firewall and Suricata schemas side by side.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">IR · Triage — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
+    <p class="kicker">The emulation</p>
+    <h2>What the agent actually ran</h2>
+    <p class="lede">A CALDERA Sandcat agent executed a realistic discovery sequence — the reconnaissance an attacker runs to understand where they’ve landed. The agent binary itself was planted as <span class="mono">/root/splunkd</span>, masquerading as a legitimate service (T1036).</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">victim host · auditd</span><span class="term-what">emulated discovery</span></div>
+    <pre><span class="out">whoami                     # who am I
+cat /etc/passwd            # local accounts
+ps aux | grep ...          # running processes
+groups                     # group membership
+hostname ; uname -a        # system identity
+ip addr ; ip route         # network config</span></pre></div>
+    <div class="proves"><span class="arw">maps to</span><span>T1033, T1087.001, T1057, T1069.001, T1082, T1016 — the standard Discovery tactic, emulated end to end.</span></div>
+  </section>
+  <section>
+    <p class="kicker">The detections</p>
+    <h2>Nine rules, each mapped to a technique</h2>
+    <p class="lede">auditd captures the execve; Wazuh decodes it and fires a rule per behaviour. Detection is validated on the dashboard, not assumed.</p>
+    <div class="flow-scroll">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:600px">
+      <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
+        <th style="padding:9px 14px 9px 0;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Rule</th>
+        <th style="padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Behaviour</th>
+        <th style="padding:9px 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">MITRE</th></tr></thead>
+      <tbody class="mono" style="font-variant-numeric:tabular-nums"><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100200</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">whoami executed</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1033</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100201</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Sandcat binary /root/splunkd</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1059</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100202</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Python version discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1518</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100203</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Hostname discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1082</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100204</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">uname system discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1082</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100205</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">IP / network config discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1016</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100206</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Process discovery via ps</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1057</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100207</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Local accounts via /etc/passwd</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1087.001</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100208</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Local groups via groups</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1069.001</td></tr></tbody></table></div>
+  </section>
+  <section>
+    <p class="kicker">What it demonstrates</p>
+    <h2>Endpoint detection, driven by emulation</h2>
+    <div class="grid">
+      <div class="card"><h3>Emulation-driven</h3><p>Detections were written against a real adversary-emulation run, not hypothetical commands.</p></div>
+      <div class="card"><h3>ATT&amp;CK-mapped</h3><p>Every rule ties to a technique, so coverage is expressed in the language a SOC reports in.</p></div>
+      <div class="card"><h3>Endpoint depth</h3><p>Detection at the host via auditd — complementary to the perimeter and SIEM work, covering a different layer.</p></div>
     </div>
   </section>
-
-  <footer>
-    <p class="note"><b>Authorized home lab.</b> All work performed on the author’s own infrastructure. Internal IPs and identifiers redacted or shown as RFC 5737 documentation addresses.</p>
-  </footer>
+  <footer><p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author’s own host. MITRE ATT&amp;CK: Discovery (TA0007) — T1033, T1087.001, T1057, T1069.001, T1082, T1016, plus T1036 and T1518.</p></footer>
 </div>
 </body>
 </html>

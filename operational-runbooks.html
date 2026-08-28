@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Detection engineering and purple-team writeups from a self-built home SOC lab.">
-<title>SOC-Lab Writeups</title>
+<meta name="description" content="Linux IR and scan-triage runbooks — turning alerts into action.">
+<title>SOC Runbooks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -164,89 +164,60 @@
 </head>
 <body>
 <div class="wrap">
+  <p style="padding-top:22px;margin:0"><a href="./" style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.04em;color:var(--muted);text-decoration:none">&larr; Portfolio</a></p>
   <header class="mast">
-    <p class="eyebrow">SOC-Lab<span class="sep">/</span>Detection Engineering</p>
-    <h1>Security Writeups</h1>
-    <p class="thesis">Hands-on detection engineering and purple-team work from a self-built home SOC lab — OPNsense perimeter, Suricata IDS, Wazuh/OpenSearch SIEM. Each piece backs its claims with <b>queries and raw output</b>, not assertion.</p>
+    <p class="eyebrow">Operations<span class="sep">/</span>Response<span class="sep">/</span>Portfolio</p>
+    <h1>From Alert to Action</h1>
+    <p class="thesis">Detections are half the job. These are the <b>runbooks</b> that turn a firing alert into a decision — a high-severity Linux IR flow, and a scan-triage guide for reading two event schemas at once.</p>
     <div class="meta">
-      <span class="chip"><b>Perimeter</b> OPNsense · Suricata</span>
-      <span class="chip"><b>SIEM</b> Wazuh · OpenSearch</span>
-      <span class="chip"><b>Emulation</b> CALDERA</span>
+      <span class="chip"><b>IR</b> Wazuh L10+ Linux</span>
+      <span class="chip"><b>Triage</b> pf + Suricata EVE</span>
+      <span class="chip ok"><span class="dot"></span>Operational playbooks</span>
     </div>
   </header>
-
   <hr class="rule">
-
   <section>
-    <p class="kicker">Writeups</p>
-    <div class="steps">
-
-      <a href="rogue-agent-log-injection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Rogue-Agent Log Injection</h3>
-          <span class="host-tag atk">purple team</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Full kill chain with verbatim output, plus the verified fix.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1078 · T1565.001 · T1070 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="vertical-scan-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Vertical Scan Detection</h3>
-          <span class="host-tag siem">detection eng</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A measurement-driven port-scan detector on OPNsense + Wazuh. Threshold tuned from a week of real traffic, validated against controlled and real-world scans, with the evasion gaps mapped honestly.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="caldera-discovery-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Catching Discovery on the Endpoint</h3>
-          <span class="host-tag siem">endpoint</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">CALDERA adversary emulation caught at the host by auditd + Wazuh. Nine rules, eight ATT&CK techniques — endpoint detection to complement the perimeter and SIEM work.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">Discovery · T1033+ — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="modat-distributed-scanner.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Scanner My Detection Couldn’t See</h3>
-          <span class="host-tag atk">threat intel</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A real commercial internet-wide scanner living in the logs — 79 IPs, one netblock, splitting targets to stay under threshold. Characterized, with the honest reason per-source detection misses it.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="indexer-heap-undersizing.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--muted)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Query That Exposed a Broken SIEM</h3>
-          <span class="host-tag" style="background:var(--surface-2);color:var(--muted);border:1px solid var(--line)">siem ops</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host — a capacity defect with no symptom that would have silently broken every dashboard. Found, diagnosed, fixed, verified.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--muted)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="operational-runbooks.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">From Alert to Action</h3>
-          <span class="host-tag siem">response</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">The runbooks that turn a firing alert into a decision: a high-severity Linux IR workflow, and a scan-triage guide for reading firewall and Suricata schemas side by side.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">IR · Triage — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
+    <p class="kicker">Runbook I</p>
+    <h2>Linux IR for high-severity alerts</h2>
+    <p class="lede">A fixed workflow so a level-10+ alert is worked the same way every time — no improvising under pressure.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">workflow</span><span class="term-what">nine steps</span></div>
+    <pre><span class="out">alert → timeline → process → network → evidence
+      → firewall containment → isolate → persistence hunt → cleanup</span></pre></div>
+    <p class="lede" style="margin-top:18px">Step one pulls every high-severity alert in the window with its full audit context — command, executable, file, working directory, PID/PPID, MITRE technique — in one query:</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span><span class="term-what">confirm the alert</span></div>
+    <pre><span class="cmd">jq -r --arg since "$SINCE" '
+  select(.timestamp >= $since)
+  | select((.rule.level // 0) >= 10)
+  | [ .timestamp, .agent.name, .rule.id, .rule.level,
+      .rule.description, (.rule.mitre.id // [] | join(",")),
+      (.data.audit.command // "-"), (.data.audit.exe // "-"),
+      (.data.audit.pid // "-"), (.data.audit.ppid // "-") ]
+  | @tsv' /var/ossec/logs/alerts/alerts.json</span></pre></div>
+    <div class="proves"><span class="arw">then</span><span>process tree → active connections (<span class="mono">ss</span>, <span class="mono">lsof</span>) → capture evidence → <span class="mono">UFW</span> containment → isolate if needed → hunt persistence → document.</span></div>
+  </section>
+  <section>
+    <p class="kicker">Runbook II</p>
+    <h2>Scan triage — reading two schemas</h2>
+    <p class="lede">OPNsense firewall events and Suricata EVE events describe the same packet with <b>different field names</b>. An analyst who doesn’t know the mapping reads blank columns as missing data. The runbook makes it a lookup.</p>
+    <div class="flow-scroll">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:560px">
+      <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
+        <th style="padding:9px 14px 9px 0;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Meaning</th>
+        <th style="padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Firewall (pf)</th>
+        <th style="padding:9px 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Suricata EVE</th></tr></thead>
+      <tbody class="mono"><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Source IP</td><td style="padding:8px 14px;color:var(--muted)">data.srcip</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.src_ip</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Source port</td><td style="padding:8px 14px;color:var(--muted)">data.srcport</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.src_port</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Dest IP</td><td style="padding:8px 14px;color:var(--muted)">data.dstip</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.dest_ip</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Dest port</td><td style="padding:8px 14px;color:var(--muted)">data.dstport</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.dest_port</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Protocol</td><td style="padding:8px 14px;color:var(--muted)">data.protocol</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.proto</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Enforcement</td><td style="padding:8px 14px;color:var(--muted)">data.action=block</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.alert.action</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)">Detection</td><td style="padding:8px 14px;color:var(--muted)">rule.description</td><td style="padding:8px 0 8px 14px;color:var(--muted)">data.alert.signature</td></tr></tbody></table></div>
+    <div class="proves"><span class="arw">result</span><span>Blank Suricata columns on a firewall event are <b>expected</b>, not a gap — and the analyst gets a ready set of hunting columns for each event type.</span></div>
+  </section>
+  <section>
+    <p class="kicker">What it demonstrates</p>
+    <h2>Building isn’t operating</h2>
+    <div class="grid">
+      <div class="card"><h3>Repeatable response</h3><p>A fixed IR sequence means the same rigor every time, and evidence captured before containment destroys it.</p></div>
+      <div class="card"><h3>Analyst empathy</h3><p>The triage guide anticipates where a responder gets confused and removes it — schema mapping, expected blanks, column sets.</p></div>
+      <div class="card tell"><h3>Queue-ready</h3><p>These are the artifacts that say "can work a SOC queue," not only "can write a rule."</p></div>
     </div>
   </section>
-
-  <footer>
-    <p class="note"><b>Authorized home lab.</b> All work performed on the author’s own infrastructure. Internal IPs and identifiers redacted or shown as RFC 5737 documentation addresses.</p>
-  </footer>
+  <footer><p class="note"><b>Authorized lab.</b> Operational runbooks for the author’s own Wazuh + OPNsense environment. Commands are generic; no secrets or infrastructure addresses.</p></footer>
 </div>
 </body>
 </html>

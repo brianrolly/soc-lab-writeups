@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Detection engineering and purple-team writeups from a self-built home SOC lab.">
-<title>SOC-Lab Writeups</title>
+<meta name="description" content="Characterizing a real distributed internet scanner and why raw-cardinality detection misses it.">
+<title>The Scanner I Couldn’t See</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -164,89 +164,60 @@
 </head>
 <body>
 <div class="wrap">
+  <p style="padding-top:22px;margin:0"><a href="./" style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.04em;color:var(--muted);text-decoration:none">&larr; Portfolio</a></p>
   <header class="mast">
-    <p class="eyebrow">SOC-Lab<span class="sep">/</span>Detection Engineering</p>
-    <h1>Security Writeups</h1>
-    <p class="thesis">Hands-on detection engineering and purple-team work from a self-built home SOC lab — OPNsense perimeter, Suricata IDS, Wazuh/OpenSearch SIEM. Each piece backs its claims with <b>queries and raw output</b>, not assertion.</p>
+    <p class="eyebrow">Threat Intelligence<span class="sep">/</span>Detection Gap<span class="sep">/</span>Portfolio</p>
+    <h1>The Scanner My Detection Couldn’t See</h1>
+    <p class="thesis">A commercial internet-wide scanner was living in the firewall logs — <b>79 addresses from one netblock</b>, splitting targets to stay under threshold. Characterizing it, and being honest about <b>why the per-source detection missed it</b>, is the point.</p>
     <div class="meta">
-      <span class="chip"><b>Perimeter</b> OPNsense · Suricata</span>
-      <span class="chip"><b>SIEM</b> Wazuh · OpenSearch</span>
-      <span class="chip"><b>Emulation</b> CALDERA</span>
+      <span class="chip"><b>Actor</b> Modat B.V. · *.scanner.modat.io</span>
+      <span class="chip"><b>Netblock</b> 85.217.0.0</span>
+      <span class="chip"><b>Volume</b> 63,820 ports / 24h</span>
     </div>
   </header>
-
   <hr class="rule">
-
   <section>
-    <p class="kicker">Writeups</p>
+    <p class="kicker">The discovery</p>
+    <h2>Found in the buckets it declined to fire on</h2>
+    <p class="lede">Validating the vertical-scan monitor, the top buckets under threshold were all from one /16. Reverse DNS and whois named it immediately.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">enrichment</span><span class="term-what">who is 85.217.x</span></div>
+    <pre><span class="cmd">dig +short -x 85.217.140.54   →  o353.scanner.modat.io</span>
+<span class="cmd">whois 85.217.140.54           →  org-name: Modat B.V. (NL)</span>
+<span class="out">a commercial internet-wide scanner — same class as Shodan / Censys</span></pre></div>
+  </section>
+  <section>
+    <p class="kicker">The scale</p>
+    <h2>Distributed by design</h2>
+    <div class="grid">
+      <div class="card tell"><h3>Per 5-min window</h3><p><b>48</b> active source IPs.</p></div>
+      <div class="card tell"><h3>Per source IP</h3><p>only <b>~20</b> ports — under the 30 threshold.</p></div>
+      <div class="card tell"><h3>Per 24 hours</h3><p><b>63,820</b> unique ports across <b>79</b> addresses.</p></div>
+    </div>
+    <p class="lede" style="margin-top:22px">The coordination signature was unmistakable: two addresses fired in the <em>same</em> 5-minute window from the same /16 but <b>split the targets</b> — one hit the first VIP, the other hit the second. Divided coverage, not two independent scanners.</p>
+  </section>
+  <section>
+    <p class="kicker">The honest gap</p>
+    <h2>Why raw cardinality can’t catch it</h2>
+    <p class="lede">Two monitors, two different blind spots — measured, not assumed:</p>
     <div class="steps">
-
-      <a href="rogue-agent-log-injection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Rogue-Agent Log Injection</h3>
-          <span class="host-tag atk">purple team</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Full kill chain with verbatim output, plus the verified fix.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1078 · T1565.001 · T1070 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="vertical-scan-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Vertical Scan Detection</h3>
-          <span class="host-tag siem">detection eng</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A measurement-driven port-scan detector on OPNsense + Wazuh. Threshold tuned from a week of real traffic, validated against controlled and real-world scans, with the evasion gaps mapped honestly.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="caldera-discovery-detection.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">Catching Discovery on the Endpoint</h3>
-          <span class="host-tag siem">endpoint</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">CALDERA adversary emulation caught at the host by auditd + Wazuh. Nine rules, eight ATT&CK techniques — endpoint detection to complement the perimeter and SIEM work.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">Discovery · T1033+ — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="modat-distributed-scanner.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--attack)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Scanner My Detection Couldn’t See</h3>
-          <span class="host-tag atk">threat intel</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A real commercial internet-wide scanner living in the logs — 79 IPs, one netblock, splitting targets to stay under threshold. Characterized, with the honest reason per-source detection misses it.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="indexer-heap-undersizing.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--muted)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">The Query That Exposed a Broken SIEM</h3>
-          <span class="host-tag" style="background:var(--surface-2);color:var(--muted);border:1px solid var(--line)">siem ops</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host — a capacity defect with no symptom that would have silently broken every dashboard. Found, diagnosed, fixed, verified.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--muted)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
-      </div></a>
-
-      <a href="operational-runbooks.html" style="text-decoration:none;color:inherit">
-      <div class="step" style="border-left:3px solid var(--trust)">
-        <div class="step-head">
-          <h3 class="step-title" style="font-size:1.15rem">From Alert to Action</h3>
-          <span class="host-tag siem">response</span>
-        </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">The runbooks that turn a firing alert into a decision: a high-severity Linux IR workflow, and a scan-triage guide for reading firewall and Suricata schemas side by side.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">IR · Triage — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
-      </div></a>
-
+      <div class="step"><div class="step-head"><span class="step-num">01</span><h3 class="step-title">Per-source cardinality misses it</h3></div>
+        <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">Each Modat address stays at ~20 ports/5-min — deliberately below the 30-port vertical threshold. Spread across 79 IPs, no single source ever crosses the line.</p></div></div>
+      <div class="step"><div class="step-head"><span class="step-num">02</span><h3 class="step-title">Distributed cardinality is disproved</h3></div>
+        <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">A "many sources / many ports" monitor fires on <b>28%</b> of all 5-minute buckets — the median window already carries 50 sources and 181 ports. On a public IP, "distributed scan" <em>is</em> the background. No threshold separates it.</p></div></div>
+      <div class="step"><div class="step-head"><span class="step-num">03</span><h3 class="step-title">The real feature is concentration</h3></div>
+        <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">Background scanning is diffuse across unrelated netblocks; Modat is 48 sources from one /16. Bucketing by <b>source network</b> — not by count — is the separating signal, and the redesign this justifies.</p></div></div>
     </div>
   </section>
-
-  <footer>
-    <p class="note"><b>Authorized home lab.</b> All work performed on the author’s own infrastructure. Internal IPs and identifiers redacted or shown as RFC 5737 documentation addresses.</p>
-  </footer>
+  <section>
+    <p class="kicker">The payoff</p>
+    <h2>A disproved detection is a result</h2>
+    <div class="grid">
+      <div class="card"><h3>Intellectual honesty</h3><p>The detection was disproved with evidence before deployment — a stronger artifact than shipping one that fires 300×/day.</p></div>
+      <div class="card"><h3>Labeled ground truth</h3><p>A named, continuously-running distributed scanner sits in the index — build and measure the redesign against it, no waiting for a real campaign.</p></div>
+      <div class="card tell"><h3>Concrete next step</h3><p>Bucket by source /24, measure the noise floor, classify known scanners downstream rather than allowlisting at the rule.</p></div>
+    </div>
+  </section>
+  <footer><p class="note"><b>Authorized lab.</b> Modat is a public research scanner; its addresses are shown as observed. Lab VIPs shown as RFC 5737 documentation addresses. Relates to MITRE T1046 — Network Service Discovery.</p></footer>
 </div>
 </body>
 </html>
