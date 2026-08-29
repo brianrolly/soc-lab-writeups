@@ -184,23 +184,89 @@
 
   <section>
     <p class="kicker">Runbook I</p>
-    <h2>Linux IR for high-severity alerts</h2>
-    <p class="lede">A fixed workflow so a level-10+ alert is worked the same way every time — no improvising under pressure.</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">workflow</span><span class="term-what">nine steps</span></div>
-    <pre><span class="out">alert → timeline → process → network → evidence
-      → firewall containment → isolate → persistence hunt → cleanup</span></pre></div>
-    <p class="lede" style="margin-top:18px">Step one pulls every high-severity alert in the window with its full audit context — command, executable, file, working directory, PID/PPID, MITRE technique — in one query:</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span><span class="term-what">confirm the alert</span></div>
-    <pre><span class="cmd">jq -r --arg since "$SINCE" '
-  select(.timestamp >= $since)
-  | select((.rule.level // 0) >= 10)
-  | [ .timestamp, .agent.name, .rule.id, .rule.level,
-      .rule.description, (.rule.mitre.id // [] | join(",")),
-      (.data.audit.command // "-"), (.data.audit.exe // "-"),
-      (.data.audit.pid // "-"), (.data.audit.ppid // "-") ]
+    <h2>Linux IR for a high-severity alert</h2>
+    <p class="lede">A fixed sequence so a level-10+ alert is worked the same way every time — and so volatile evidence is captured <b>before</b> containment destroys it. Fifteen steps in the full runbook; this is the spine.</p>
+
+    <div class="term siem"><div class="term-head"><span class="term-host siem">workflow</span><span class="term-what">the spine</span></div>
+    <pre><span class="out">confirm → processes → network → capture evidence
+        → contain (block) → hunt persistence → remediate → report</span></pre></div>
+
+    <div class="steps" style="margin-top:18px">
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">01</span><h3 class="step-title">Confirm — pull the alert with full audit context</h3><span class="host-tag siem">manager</span></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span></div>
+        <pre><span class="cmd">jq -r 'select((.rule.level//0)>=10)
+  | [.timestamp,.agent.name,.rule.id,.rule.description,
+     (.rule.mitre.id//[]|join(",")),.data.audit.command,
+     .data.audit.exe,.data.audit.pid,.data.audit.ppid]
   | @tsv' /var/ossec/logs/alerts/alerts.json</span></pre></div>
-    <div class="proves"><span class="arw">then</span><span>process tree → active connections (<span class="mono">ss</span>, <span class="mono">lsof</span>) → capture evidence → <span class="mono">UFW</span> containment → isolate if needed → hunt persistence → document.</span></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">02</span><h3 class="step-title">Processes — walk the tree from the flagged PID</h3></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
+        <pre><span class="cmd">ps -eo pid,ppid,user,lstart,cmd --sort=start_time | tail -100</span>
+<span class="cmd">pstree -asp $PID; readlink -f /proc/$PID/exe; ls -la /proc/$PID/fd</span>
+<span class="out"># flag: binaries in /tmp /dev/shm /root; curl/python/nc; odd parent/child</span></pre></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">03</span><h3 class="step-title">Network — find the outbound session</h3><span class="host-tag atk">C2 hunt</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">outbound connections</span></div>
+        <pre><span class="cmd">ss -tunap | grep -vE '127.0.0.1|::1'    # every non-loopback socket</span>
+<span class="cmd">lsof -Pan -i -n -p $PID                  # the flagged process's connections</span>
+<span class="out"># flag: established <span class="hl-atk">outbound to an unknown IP</span> from a /tmp or agent process</span></pre></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">04</span><h3 class="step-title">Evidence first — capture before touching anything</h3></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">preserve the C2 traffic</span></div>
+        <pre><span class="cmd">mkdir -p /root/ir-evidence
+tcpdump -i any -nn -s0 host $REMOTE_IP \
+  -w /root/ir-evidence/suspect-$REMOTE_IP-$(date -u +%Y%m%d-%H%M%S).pcap</span></pre></div>
+        <div class="proves"><span class="arw">discipline</span><span>Packet capture and process/file state are preserved <b>before</b> any kill or block — containment destroys volatile evidence.</span></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">05</span><h3 class="step-title">Contain — block the C2, keep SSH and telemetry alive</h3><span class="host-tag siem">UFW</span></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">victim host</span></div>
+        <pre><span class="cmd">ufw allow from $ADMIN_IP to any port 22 proto tcp   # don't lock yourself out</span>
+<span class="cmd">ufw allow out to 198.51.100.10 port 1514 proto tcp  # keep Wazuh reporting</span>
+<span class="cmd">ufw deny out to $REMOTE_IP                           # cut the beacon</span>
+<span class="cmd">ss -ntp state established | grep $REMOTE_IP || echo "connection dropped"</span></pre></div>
+        <div class="proves"><span class="arw">note</span><span>Order matters — allow SSH and Wazuh <em>before</em> the block, so containment severs neither your access nor your visibility.</span></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Hunt persistence — before declaring it over</h3></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
+        <pre><span class="cmd">systemctl list-unit-files | grep -Ei 'agent|cron|sandcat|splunk'</span>
+<span class="cmd">grep -RniE 'curl|wget|/tmp|/dev/shm|nc |socat|sandcat' \
+  /etc/systemd/system /etc/cron* /var/spool/cron /root /home 2>/dev/null</span>
+<span class="cmd">find /root /home -name authorized_keys -exec cat {} \;   # planted keys</span></pre></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">07</span><h3 class="step-title">Remediate — stop it, and stop it respawning</h3></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
+        <pre><span class="cmd">kill $PID; ps -p $PID || echo "stopped"</span>
+<span class="cmd">systemctl disable --now $SERVICE; systemctl daemon-reload   # if it respawns</span></pre></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">08</span><h3 class="step-title">Report — export a portable evidence bundle</h3><span class="host-tag siem">manager</span></div>
+        <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span></div>
+        <pre><span class="cmd">CASE="ir-$(date -u +%Y%m%d-%H%M%S)"; mkdir -p /root/$CASE
+jq -c 'select(.agent.name==$victim)' …/alerts.json   &gt; /root/$CASE/alerts.json
+jq -c 'select(.agent.name==$victim)' …/archives.json &gt; /root/$CASE/archives.json
+jq -r '…|@tsv' /root/$CASE/alerts.json &gt; /root/$CASE/alert-summary.tsv</span></pre></div>
+        <div class="proves"><span class="arw">output</span><span>A timestamped case folder — raw alerts, raw archives, and a readable command timeline — plus the filled analyst-notes template that closes the runbook.</span></div>
+      </div>
+
+    </div>
   </section>
+
   <section>
     <p class="kicker">Runbook II</p>
     <h2>Scan triage — reading two schemas</h2>
