@@ -176,6 +176,12 @@
     </div>
   </header>
   <hr class="rule">
+
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">While validating the port-scan detector, the traffic it kept declining to alert on all traced to one place. Chasing that down became a short <b>threat-intelligence exercise</b> — and an honest reckoning with a detection that does not work.</p>
+  </section>
+
   <section>
     <p class="kicker">The discovery</p>
     <h2>Found in the buckets it declined to fire on</h2>
@@ -217,6 +223,12 @@
       <div class="card tell"><h3>Concrete next step</h3><p>Bucket by source /24, measure the noise floor, classify known scanners downstream rather than allowlisting at the rule.</p></div>
     </div>
   </section>
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The point is the discipline, not the scanner.</b> A detection disproved with data before it ships is worth more than one that fires 300 times a day and teaches the analyst to look away. Modat now serves as labeled ground truth — a real, continuously running distributed scanner to build and measure the redesign against.</p>
+  </section>
+
   <footer><p class="note"><b>Authorized lab.</b> Modat is a public research scanner; its addresses are shown as observed. Lab VIPs shown as RFC 5737 documentation addresses. Relates to MITRE T1046 — Network Service Discovery.</p></footer>
 </div>
 </body>

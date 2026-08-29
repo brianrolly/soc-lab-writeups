@@ -176,6 +176,12 @@
     </div>
   </header>
   <hr class="rule">
+
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">This began as routine measurement — a week-long query to tune a detection threshold — and became a capacity finding. <b>The most dangerous defects in a SIEM are the ones with no symptom</b>, and this was one of them.</p>
+  </section>
+
   <section>
     <p class="kicker">The symptom</p>
     <h2>Day one worked; day seven fell over</h2>
@@ -214,6 +220,12 @@ which is larger than the limit of 972.7mb
     </div>
     <p class="lede" style="margin-top:22px">Operational note recorded for the team: on this single-node cluster, <b>yellow with unassigned replicas is the correct steady state</b>, and <b>red for the first minute after a restart is recovery, not failure</b> — a distinction that had already caused one needless rollback.</p>
   </section>
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The fix was one line; the value was catching it before it mattered.</b> A monitoring platform that silently cannot answer multi-day questions is worse than one that is obviously down — at least the latter gets fixed. The investigation also produced the operational facts the team now relies on: what healthy looks like on a single-node cluster, and what is merely recovery.</p>
+  </section>
+
   <footer><p class="note"><b>Authorized lab.</b> Capacity finding on the author’s own single-node Wazuh/OpenSearch cluster, found while measuring detection data.</p></footer>
 </div>
 </body>

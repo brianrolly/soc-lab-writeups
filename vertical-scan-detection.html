@@ -178,6 +178,12 @@
 
   <hr class="rule">
 
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Port scans are the constant background noise of any internet-facing host. The hard part is not seeing them — it is <b>separating a real scan from the ambient hum</b> without burying the analyst in false positives. This is how that line was drawn on an OPNsense + Wazuh stack, and how it was kept honest.</p>
+  </section>
+
+
   <section>
     <p class="kicker">The number that matters</p>
     <h2>Why the threshold is 30</h2>
@@ -273,6 +279,12 @@ done</span></pre></div>
       <div class="card"><h3>Adversarial testing</h3><p>Tested for evasion — mixed flags, stealth flags, slow pacing — each traced to which layer caught it.</p></div>
       <div class="card tell"><h3>Honest gaps</h3><p>The one real evasion path is documented with evidence and turned into a concrete next requirement.</p></div>
     </div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the background, and has its blind spots written down</b> rather than hidden. It has run in production with zero false positives, and every gap it carries is a documented next step — not a surprise waiting for an incident.</p>
   </section>
 
   <footer>

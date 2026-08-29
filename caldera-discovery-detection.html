@@ -176,6 +176,12 @@
     </div>
   </header>
   <hr class="rule">
+
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Perimeter and SIEM detections watch traffic; they do not watch what an intruder types once they are on a host. This is the <b>endpoint layer</b> — emulating an attacker’s first-minutes reconnaissance with CALDERA, and proving Linux auditd and Wazuh turn each command into a MITRE-mapped alert.</p>
+  </section>
+
   <section>
     <p class="kicker">The emulation</p>
     <h2>What the agent actually ran</h2>
@@ -210,6 +216,12 @@ ip addr ; ip route         # network config</span></pre></div>
       <div class="card"><h3>Endpoint depth</h3><p>Detection at the host via auditd — complementary to the perimeter and SIEM work, covering a different layer.</p></div>
     </div>
   </section>
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>Endpoint discovery is often where an intrusion first becomes visible</b>, and it is low-signal by nature — a single <span class="mono">whoami</span> is nothing; the pattern is everything. Mapping each behaviour to ATT&CK turns a pile of exec events into coverage a SOC can report on, and reason about the gaps in.</p>
+  </section>
+
   <footer><p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author’s own host. MITRE ATT&amp;CK: Discovery (TA0007) — T1033, T1087.001, T1057, T1069.001, T1082, T1016, plus T1036 and T1518.</p></footer>
 </div>
 </body>

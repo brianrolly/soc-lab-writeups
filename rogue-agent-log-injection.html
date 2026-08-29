@@ -180,6 +180,12 @@
 
   <hr class="rule">
 
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">The lab is a full home SOC — an OPNsense perimeter, Suricata IDS, and a Wazuh/OpenSearch SIEM watching two Linux hosts. The SIEM is the component meant to see every other attack. This authorized purple-team exercise asks the harder question: <b>what happens when the attacker turns on the SIEM itself?</b></p>
+  </section>
+
+
   <section>
     <p class="kicker">The mechanism</p>
     <h2>Crossing the trust boundary</h2>
@@ -440,6 +446,12 @@
       </div>
     </div>
     <div class="proves" style="margin-top:16px"><span class="arw">result</span><span>The unauthenticated foothold is closed, and the same chain now raises alerts at enrollment (rule <span class="mono">100361</span>) and at removal (rule <span class="mono">100363</span>). <b>Detection proved the risk; configuration removed it.</b></span></div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The loop closed end to end</b> — the unauthenticated foothold was proven, detection was built and confirmed against a live re-run, and the entry point was then removed at the source. The architectural lesson is the one that matters: a SIEM that can be silently enrolled into and written to is a monitor you cannot fully trust — and detection alone does not fix that. Configuration and tamper-evident, off-box storage do.</p>
   </section>
 
   <footer>
