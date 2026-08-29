@@ -239,22 +239,26 @@ tcpdump -i any -nn -s0 host $REMOTE_IP \
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Forensics — collect, hash, and timeline before remediating</h3><span class="host-tag atk">collect live</span></div>
-        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">pull artifacts while the process is alive</span></div>
+        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Forensics — capture memory, collect, hash, timeline</h3><span class="host-tag atk">most volatile first</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">RAM — capture before anything else</span></div>
+        <pre><span class="cmd"># full memory image — avml is a single static binary, no kernel module needed
+./avml /root/ir-evidence/mem-$(hostname)-$(date -u +%Y%m%d-%H%M%S).lime</span>
+<span class="out"># analyse offline with Volatility 3 (Linux):
+#   vol -f mem-*.lime linux.pslist   linux.pstree
+#   vol -f mem-*.lime linux.netstat  linux.bash   linux.malfind</span></pre></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">live artifacts from /proc</span></div>
         <pre><span class="cmd"># the live binary straight out of /proc — recovers it even if unlinked on disk
 cp /proc/$PID/exe   /root/ir-evidence/suspect.bin
-cat /proc/$PID/maps /proc/$PID/environ /proc/$PID/status &gt; /root/ir-evidence/proc-$PID.txt</span>
-<span class="cmd"># host artifacts: logins, failures, shell history, recent journal
-last -Fw &gt; /root/ir-evidence/logins.txt ; lastb -Fw &gt; /root/ir-evidence/failed.txt
-cp ~/.bash_history /root/ir-evidence/ 2&gt;/dev/null
+cat /proc/$PID/maps /proc/$PID/environ /proc/$PID/status &gt; /root/ir-evidence/proc-$PID.txt
+last -Fw &gt; …/logins.txt ; lastb -Fw &gt; …/failed.txt ; cp ~/.bash_history …/
 journalctl --since "-4 hours" &gt; /root/ir-evidence/journal.txt</span></pre></div>
         <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">integrity + timeline</span></div>
         <pre><span class="cmd"># hash every artifact — this is what makes it evidence, not just a copy
 sha256sum /root/ir-evidence/* | tee /root/ir-evidence/SHA256SUMS</span>
-<span class="cmd"># build a file timeline (change/modify/access), newest last
-stat /root/ir-evidence/suspect.bin
-find /tmp /dev/shm /root /home -type f -newermt "-6 hours" -printf '%T+ %p\n' | sort</span></pre></div>
-        <div class="proves"><span class="arw">chain of custody</span><span>Every item is logged with collector, UTC time, source path, and its SHA-256 — collected <b>before</b> the process is killed, hashed <b>at</b> collection. That is the line between "I responded" and evidence a forensics team can actually use.</span></div>
+<span class="cmd"># filesystem super-timeline (recovers deleted entries) with The Sleuth Kit
+fls -r -m / /dev/sda2 &gt; /root/ir-evidence/bodyfile
+mactime -b /root/ir-evidence/bodyfile -d &gt; /root/ir-evidence/timeline.csv</span></pre></div>
+        <div class="proves"><span class="arw">tooling &amp; custody</span><span>Acquire with <span class="mono">avml</span> / LiME; analyse memory in <span class="mono">Volatility 3</span>; disk and timeline via <span class="mono">Sleuth Kit</span> / <span class="mono">Autopsy</span> / <span class="mono">plaso</span>; broad live triage with <span class="mono">Velociraptor</span> or UAC. Every item is logged with collector, UTC time, source path and SHA-256 — captured <b>before</b> the kill, hashed <b>at</b> collection.</span></div>
       </div>
 
       <div class="step">
