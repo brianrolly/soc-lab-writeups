@@ -181,6 +181,10 @@
     text-transform:uppercase; color:var(--faint); margin:0 0 8px}
   .op h3{margin:0 0 8px; font-size:1rem; font-weight:600}
   .op p{margin:0; font-size:.92rem; color:var(--muted)}
+  .op .advy{font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--faint);
+    margin:12px 0 0; padding-top:11px; border-top:1px solid var(--line)}
+  .op .advy b{color:var(--trust-ink); font-weight:600}
+  .op .advy i{font-style:normal; color:var(--muted)}
   .tally{display:flex; gap:10px; flex-wrap:wrap; margin:0 0 22px}
   .tally .t{flex:1; min-width:150px; border:1px solid var(--line); border-radius:10px;
     background:var(--surface); padding:14px 16px}
@@ -217,19 +221,22 @@
     <p class="lede">Each run used a CALDERA Sandcat agent running as root on the victim host, beaconing to a C2 server on the lab's attack box.</p>
     <div class="ops">
       <div class="op">
-        <p class="id">OP-001 &middot; Discovery</p>
+        <p class="id">OP-001</p>
         <h3>First minutes on the box</h3>
         <p>37 steps of enumeration &mdash; who am I, what accounts exist, what is running. Nine rules written against it, one per behaviour. Every technique alerted.</p>
+        <p class="advy">operation <b>New op1</b> &middot; <i>agent</i> ezanbx &middot; <i>tactic</i> Discovery</p>
       </div>
       <div class="op mixed">
-        <p class="id">OP-002 &middot; Collection</p>
+        <p class="id">OP-002</p>
         <h3>The SIEM catches itself</h3>
         <p>A file-search run that detected correctly &mdash; and simultaneously exposed five rules firing on Wazuh's own maintenance, cron, and snapd activity.</p>
+        <p class="advy">adversary <b>Collection</b> &middot; <i>planner</i> atomic &middot; <i>agent</i> kukoop</p>
       </div>
       <div class="op mixed">
-        <p class="id">OP-003 &middot; Super Spy</p>
+        <p class="id">OP-003</p>
         <h3>The whole chain</h3>
         <p>Stage, collect, archive, exfiltrate, clean up. Seven stages executed. Two alerted. The other five existed only in raw telemetry.</p>
+        <p class="advy">adversary <b>Super Spy</b> &middot; <i>agent</i> kukoop &middot; <i>group</i> red</p>
       </div>
     </div>
   </section>
@@ -271,7 +278,7 @@ ip addr ; ip route         # network config</span></pre></div>
   <section>
     <p class="kicker">OP-002 &middot; the uncomfortable result</p>
     <h2>Five rules were watching the SIEM, not the attacker</h2>
-    <p class="lede">The second operation was collection-focused: CALDERA searched the filesystem for small media and config files, staged them, and cleaned up. Wazuh detected the search correctly. It also produced a pile of alerts that had nothing to do with the emulation.</p>
+    <p class="lede">The second operation ran CALDERA's <b>Collection</b> adversary through the atomic planner: search the filesystem for small media and config files, stage them, clean up. Wazuh detected the search correctly. It also produced a pile of alerts that had nothing to do with the emulation.</p>
     <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">op-002 &middot; collection via atomic planner</span></div>
     <pre><span class="cmd">find / -name '*.png' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
 <span class="cmd">find / -name '*.yml' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
