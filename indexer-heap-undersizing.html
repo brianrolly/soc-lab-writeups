@@ -183,8 +183,39 @@
   </section>
 
   <section>
+    <p class="kicker">The trigger</p>
+    <h2>A routine measurement, run one day too wide</h2>
+    <p class="lede">It surfaced while deriving a port-scan detection threshold from a week of real traffic — a composite aggregation over the firewall-block events, run one 24-hour slice at a time. Identical each day; only the time range changed.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">opensearch</span><span class="term-what">the query · one day-slice</span></div>
+    <pre><span class="cmd">POST wazuh-alerts-*/_search
+{
+  "size": 0,
+  "query": { "bool": { "filter": [
+    { "term":   { "decoder.name": "pf" } },
+    { "term":   { "data.action": "block" } },
+    { "terms":  { "data.dstip": ["198.51.100.36","198.51.100.37"] } },
+    { "exists": { "field": "data.dstport" } },
+    { "range":  { "timestamp": { "gte": "now-2d", "lt": "now-1d" } } }
+  ] } },
+  "aggs": { "s": {
+    "composite": { "size": 1000, "sources": [
+      { "srcip": { "terms": { "field": "data.srcip" } } },
+      { "proto": { "terms": { "field": "data.protocol" } } },
+      { "flags": { "terms": { "field": "data.tcp.flags", "missing_bucket": true } } }
+    ] },
+    "aggs": {
+      "up": { "cardinality": { "field": "data.dstport", "precision_threshold": 1000 } },
+      "ut": { "cardinality": { "field": "data.dstip" } }
+    }
+  } }
+}</span></pre></div>
+    <div class="proves"><span class="arw">the catch</span><span>A one-day window allocated fine. Widening <span class="mono">gte</span> to <span class="mono">now-7d</span> forced the composite plus two <span class="mono">cardinality</span> sub-aggregations to hold far more fielddata at once — and on a heap already ~85% consumed, that was the straw.</span></div>
+  </section>
+
+  <section>
     <p class="kicker">The symptom</p>
     <h2>Day one worked; day seven fell over</h2>
+    <p class="lede">The first run hid it. The query piped straight into <span class="mono">jq</span> with no error handling, so the error object came back as <span class="mono">Cannot iterate over null</span> and read like a client-side bug. Surfacing the raw response showed the truth:</p>
     <div class="term siem"><div class="term-head"><span class="term-host siem">opensearch</span><span class="term-what">7-day aggregation</span></div>
     <pre><span class="out">circuit_breaking_exception: [parent] Data too large … 974.2mb,
 which is larger than the limit of 972.7mb
