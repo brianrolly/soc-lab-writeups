@@ -188,8 +188,8 @@
     <p class="lede">A fixed sequence so a level-10+ alert is worked the same way every time — and so volatile evidence is captured <b>before</b> containment destroys it. Fifteen steps in the full runbook; this is the spine.</p>
 
     <div class="term siem"><div class="term-head"><span class="term-host siem">workflow</span><span class="term-what">the spine</span></div>
-    <pre><span class="out">confirm → processes → network → capture evidence
-        → contain (block) → hunt persistence → remediate → report</span></pre></div>
+    <pre><span class="out">confirm → processes → network → capture → contain
+        → forensics → hunt persistence → remediate → report</span></pre></div>
 
     <div class="steps" style="margin-top:18px">
 
@@ -239,7 +239,26 @@ tcpdump -i any -nn -s0 host $REMOTE_IP \
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Hunt persistence — before declaring it over</h3></div>
+        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Forensics — collect, hash, and timeline before remediating</h3><span class="host-tag atk">collect live</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">pull artifacts while the process is alive</span></div>
+        <pre><span class="cmd"># the live binary straight out of /proc — recovers it even if unlinked on disk
+cp /proc/$PID/exe   /root/ir-evidence/suspect.bin
+cat /proc/$PID/maps /proc/$PID/environ /proc/$PID/status &gt; /root/ir-evidence/proc-$PID.txt</span>
+<span class="cmd"># host artifacts: logins, failures, shell history, recent journal
+last -Fw &gt; /root/ir-evidence/logins.txt ; lastb -Fw &gt; /root/ir-evidence/failed.txt
+cp ~/.bash_history /root/ir-evidence/ 2&gt;/dev/null
+journalctl --since "-4 hours" &gt; /root/ir-evidence/journal.txt</span></pre></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">integrity + timeline</span></div>
+        <pre><span class="cmd"># hash every artifact — this is what makes it evidence, not just a copy
+sha256sum /root/ir-evidence/* | tee /root/ir-evidence/SHA256SUMS</span>
+<span class="cmd"># build a file timeline (change/modify/access), newest last
+stat /root/ir-evidence/suspect.bin
+find /tmp /dev/shm /root /home -type f -newermt "-6 hours" -printf '%T+ %p\n' | sort</span></pre></div>
+        <div class="proves"><span class="arw">chain of custody</span><span>Every item is logged with collector, UTC time, source path, and its SHA-256 — collected <b>before</b> the process is killed, hashed <b>at</b> collection. That is the line between "I responded" and evidence a forensics team can actually use.</span></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">07</span><h3 class="step-title">Hunt persistence — before declaring it over</h3></div>
         <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
         <pre><span class="cmd">systemctl list-unit-files | grep -Ei 'agent|cron|sandcat|splunk'</span>
 <span class="cmd">grep -RniE 'curl|wget|/tmp|/dev/shm|nc |socat|sandcat' \
@@ -248,14 +267,14 @@ tcpdump -i any -nn -s0 host $REMOTE_IP \
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">07</span><h3 class="step-title">Remediate — stop it, and stop it respawning</h3></div>
+        <div class="step-head"><span class="step-num">08</span><h3 class="step-title">Remediate — stop it, and stop it respawning</h3></div>
         <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
         <pre><span class="cmd">kill $PID; ps -p $PID || echo "stopped"</span>
 <span class="cmd">systemctl disable --now $SERVICE; systemctl daemon-reload   # if it respawns</span></pre></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">08</span><h3 class="step-title">Report — export a portable evidence bundle</h3><span class="host-tag siem">manager</span></div>
+        <div class="step-head"><span class="step-num">09</span><h3 class="step-title">Report — export a portable evidence bundle</h3><span class="host-tag siem">manager</span></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span></div>
         <pre><span class="cmd">CASE="ir-$(date -u +%Y%m%d-%H%M%S)"; mkdir -p /root/$CASE
 jq -c 'select(.agent.name==$victim)' …/alerts.json   &gt; /root/$CASE/alerts.json
