@@ -157,7 +157,7 @@
   .fix-item b{font-weight:600}
 
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
-  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
 </style>
@@ -168,7 +168,7 @@
   <header class="mast">
     <p class="eyebrow">Threat Intelligence<span class="sep">/</span>Detection Gap<span class="sep">/</span>Portfolio</p>
     <h1>The Scanner My Detection Couldn’t See</h1>
-    <p class="thesis">A commercial internet-wide scanner was living in the firewall logs — <b>79 addresses from one netblock</b>, splitting targets to stay under threshold. Characterizing it, and being honest about <b>why the per-source detection missed it</b>, is the point.</p>
+    <p class="thesis">A commercial internet-wide scanner was living in the firewall logs — <b>79 addresses from one netblock</b>, splitting targets so that each source stayed under threshold. Characterizing it, and being honest about <b>why the per-source detection missed it</b>, is the point.</p>
     <div class="meta">
       <span class="chip"><b>Actor</b> Modat B.V. · *.scanner.modat.io</span>
       <span class="chip"><b>Netblock</b> 85.217.0.0</span>
@@ -207,7 +207,7 @@
     <p class="lede">Two monitors, two different blind spots — measured, not assumed:</p>
     <div class="steps">
       <div class="step"><div class="step-head"><span class="step-num">01</span><h3 class="step-title">Per-source cardinality misses it</h3></div>
-        <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">Each Modat address stays at ~20 ports/5-min — deliberately below the 30-port vertical threshold. Spread across 79 IPs, no single source ever crosses the line.</p></div></div>
+        <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">Each Modat address stays at ~20 ports/5-min — below the 30-port vertical threshold. Spread across 79 IPs, no single source ever crosses the line.</p></div></div>
       <div class="step"><div class="step-head"><span class="step-num">02</span><h3 class="step-title">Distributed cardinality is disproved</h3></div>
         <div style="padding:0 20px 14px"><p style="margin:0;color:var(--muted)">A "many sources / many ports" monitor fires on <b>28%</b> of all 5-minute buckets — the median window already carries 50 sources and 181 ports. On a public IP, "distributed scan" <em>is</em> the background. No threshold separates it.</p></div></div>
       <div class="step"><div class="step-head"><span class="step-num">03</span><h3 class="step-title">The real feature is concentration</h3></div>

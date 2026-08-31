@@ -157,7 +157,7 @@
   .fix-item b{font-weight:600}
 
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
-  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
 </style>
@@ -234,7 +234,7 @@ which is larger than the limit of 972.7mb
   </section>
   <section>
     <p class="kicker">The fix</p>
-    <h2>4 GB, verified, no downtime cost</h2>
+    <h2>4 GB, verified, one planned restart</h2>
     <div class="term siem"><div class="term-head"><span class="term-host siem">/etc/wazuh-indexer/jvm.options</span><span class="term-what">after restart</span></div>
     <pre><span class="cmd">-Xms1g -Xmx1g   →   -Xms4g -Xmx4g</span>
 <span class="out">heap: 4096MB max, 27% used at rest

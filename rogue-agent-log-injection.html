@@ -157,7 +157,7 @@
   .fix-item b{font-weight:600}
 
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
-  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
 </style>
@@ -193,7 +193,7 @@
 
     <figure class="flow">
       <div class="flow-scroll">
-        <svg viewBox="0 0 1140 320" role="img" aria-label="Flow: caldera-c2 probes port 1515, enrolls with no password to steal an agent key, installs an agent to become Agent 003 which crosses the trust boundary into the SIEM, then injects a forged log that is indexed as a trusted alert and shown to the SOC as a real attack.">
+        <svg viewBox="0 0 1140 320" role="img" aria-label="Flow: caldera-c2 probes port 1515, enrolls with no password and is issued a valid agent key, installs an agent to become Agent 003 which crosses the trust boundary into the SIEM, then injects a forged log that is indexed as a trusted alert and shown to the SOC as a real attack.">
           <!-- zone labels -->
           <text x="20" y="30" class="svg-zone zone-atk">Untrusted — attacker</text>
           <text x="1120" y="30" text-anchor="end" class="svg-zone zone-trust">Trusted — SIEM</text>
@@ -220,10 +220,10 @@
           <line x1="418" y1="157" x2="480" y2="157" class="edge-atk" marker-end="url(#ar-atk)"/>
           <text x="449" y="147" text-anchor="middle" class="svg-arrow-lbl edge-lbl-atk">enroll</text>
 
-          <!-- Node 3: stolen key -->
+          <!-- Node 3: issued key -->
           <rect x="480" y="120" width="130" height="74" rx="7" class="n-box n-atk"/>
           <text x="545" y="150" text-anchor="middle" class="svg-title n-atk-t">key 003</text>
-          <text x="545" y="170" text-anchor="middle" class="svg-sub n-sub">stolen identity</text>
+          <text x="545" y="170" text-anchor="middle" class="svg-sub n-sub">issued, no auth</text>
 
           <!-- edge 3 crosses boundary -->
           <line x1="610" y1="157" x2="676" y2="157" class="edge-atk" marker-end="url(#ar-atk)"/>
@@ -260,7 +260,7 @@
           </defs>
         </svg>
       </div>
-      <figcaption><b>The red path is the attack.</b> Enrollment on 1515 hands the attacker a valid key with no password; installing an agent with that key moves the identity across the trust boundary, after which a single <span class="mono">logger</span> line becomes a trusted alert the SOC cannot distinguish from a real one.</figcaption>
+      <figcaption><b>The red path is the attack.</b> Enrollment on 1515 hands the attacker a valid key with no password; installing an agent with that key moves the identity across the trust boundary, after which a single <span class="mono">logger</span> line becomes a trusted alert that, read on its own, looks exactly like a real one.</figcaption>
     </figure>
   </section>
 
@@ -307,7 +307,7 @@
       <div class="step">
         <div class="step-head">
           <span class="step-num">03</span>
-          <h3 class="step-title">Steal a trusted identity</h3>
+          <h3 class="step-title">Obtain a trusted identity</h3>
           <span class="host-tag atk">caldera-c2</span>
         </div>
         <div class="term">
@@ -332,7 +332,7 @@
 <span class="cmd">sed -i 's#&lt;address&gt;.*#&lt;address&gt;198.51.100.10&lt;/address&gt;#' /var/ossec/etc/ossec.conf</span>
 <span class="cmd">systemctl start wazuh-agent</span></pre>
         </div>
-        <div class="proves"><span class="arw">proves</span><span>The attacker host now runs a real Wazuh agent authenticating with the stolen key.</span></div>
+        <div class="proves"><span class="arw">proves</span><span>The attacker host now runs a real Wazuh agent authenticating with a key the manager issued on request.</span></div>
       </div>
 
       <!-- 5 -->
@@ -402,7 +402,7 @@
       <div class="card tell">
         <h3>The only tell</h3>
         <p>The forged event used <code>203.0.113.66</code> — an RFC 5737 documentation IP that cannot route. Its blank GeoLocation was the sole giveaway.</p>
-        <p>A real attacker picks a live IP, and the forged alert becomes <b>indistinguishable</b> from the genuine ones beside it.</p>
+        <p>A real attacker picks a live IP, and the forged alert is then <b>indistinguishable at the record level</b> from the genuine ones beside it — only agent provenance and enrollment history separate them.</p>
       </div>
     </div>
   </section>
@@ -413,10 +413,18 @@
         <h3 class="mono" style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px">MITRE ATT&amp;CK</h3>
         <div class="att">
           <div class="att-row"><span class="att-id">T1046</span><span class="att-name">Network Service Discovery — the recon scan</span></div>
-          <div class="att-row"><span class="att-id">T1078</span><span class="att-name">Valid Accounts — the stolen trusted identity</span></div>
-          <div class="att-row"><span class="att-id">T1565.001</span><span class="att-name">Stored Data Manipulation — the forged record</span></div>
+          <div class="att-row"><span class="att-id">T1136</span><span class="att-name">Create Account — closest analog: the unauthorized identity</span></div>
+          <div class="att-row"><span class="att-id">T1078</span><span class="att-name">Valid Accounts — closest analog: authenticating with it</span></div>
+          <div class="att-row"><span class="att-id">T1565.001</span><span class="att-name">Stored Data Manipulation — the forged record (exact)</span></div>
           <div class="att-row"><span class="att-id">T1562</span><span class="att-name">Impair Defenses — poisoning the SIEM</span></div>
         </div>
+        <p style="font-family:'IBM Plex Mono',monospace; font-size:.72rem; line-height:1.7; color:var(--muted); margin:15px 0 0">
+          <b style="color:var(--ink)">On the identity mappings.</b> T1136 and T1078 are approximate. A Wazuh
+          agent key is a service&#47;endpoint identity issued by the manager &mdash; not a local, domain, or cloud
+          user account &mdash; so neither technique fits cleanly. T1136 is the closest analog for creating the
+          unauthorized trusted identity; T1078 for subsequently authenticating with the valid issued credential.
+          <b style="color:var(--ink)">T1565.001 is the exact mapping</b> for the forged alert record itself.
+        </p>
       </div>
       <div class="card">
         <h3 class="mono" style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px">Response</h3>

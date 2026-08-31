@@ -157,7 +157,7 @@
   .fix-item b{font-weight:600}
 
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
-  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
 </style>
@@ -188,7 +188,7 @@
           <span class="host-tag atk">purple team</span>
         </div>
         <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Full kill chain with verbatim output, plus the verified fix.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1078 · T1565.001 · T1070 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
+        <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1136 · T1078 · T1565.001 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
       </div></a>
 
       <a href="vertical-scan-detection.html" style="text-decoration:none;color:inherit">
@@ -217,7 +217,7 @@
           <h3 class="step-title" style="font-size:1.15rem">The Scanner My Detection Couldn’t See</h3>
           <span class="host-tag atk">threat intel</span>
         </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A real commercial internet-wide scanner living in the logs — 79 IPs, one netblock, splitting targets to stay under threshold. Characterized, with the honest reason per-source detection misses it.</p></div>
+        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A real commercial internet-wide scanner living in the logs — 79 IPs, one netblock, splitting targets so each source stayed under threshold. Characterized, with the honest reason per-source detection misses it.</p></div>
         <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1046 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
       </div></a>
 
@@ -228,7 +228,7 @@
           <span class="host-tag" style="background:var(--surface-2);color:var(--muted);border:1px solid var(--line)">siem ops</span>
         </div>
         <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host — a capacity defect with no symptom that would have silently broken every dashboard. Found, diagnosed, fixed, verified.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--muted)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
+        <div class="proves"><span class="arw" style="color:var(--muted)">Focus</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
       </div></a>
 
       <a href="operational-runbooks.html" style="text-decoration:none;color:inherit">
@@ -238,7 +238,7 @@
           <span class="host-tag siem">response</span>
         </div>
         <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">The runbooks that turn a firing alert into a decision: a high-severity Linux IR workflow, and a scan-triage guide for reading firewall and Suricata schemas side by side.</p></div>
-        <div class="proves"><span class="arw" style="color:var(--trust-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">IR · Triage — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
+        <div class="proves"><span class="arw" style="color:var(--trust-ink)">Focus</span><span class="mono" style="font-size:.85rem;color:var(--muted)">IR · Triage — &nbsp;<b style="color:var(--trust-ink)">Read &rarr;</b></span></div>
       </div></a>
 
     </div>

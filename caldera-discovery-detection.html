@@ -157,7 +157,7 @@
   .fix-item b{font-weight:600}
 
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
-  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7; max-width:70ch}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
 
@@ -402,6 +402,7 @@ ip addr ; ip route         # network config</span></pre></div>
   <section>
     <p class="kicker">What changed</p>
     <h2>The rules the gaps produced</h2>
+    <p class="lede">All five are <b>deployed and validated</b> &mdash; not proposals.</p>
     <div class="fix">
       <div class="fix-item"><span class="fix-tag det">T1074.001</span><p><b>Local staging detection</b> &mdash; alert on <code>mkdir</code> of a staging directory and <code>cp</code> into it from an agent working directory, the pattern common to every collection framework.</p></div>
       <div class="fix-item"><span class="fix-tag det">T1560.001</span><p><b>Archive-before-exfil</b> &mdash; <code>tar</code>/<code>gzip</code> producing an archive inside a directory that just received copied files. The sequence is the signal, not the utility.</p></div>
