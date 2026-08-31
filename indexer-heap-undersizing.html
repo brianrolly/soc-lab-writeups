@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="A capacity defect on a Wazuh/OpenSearch cluster, found while measuring detection data.">
-<title>SIEM Heap Undersizing</title>
+<title>The Query That Exposed a Broken SIEM</title>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="SOC-Lab Writeups">
+<meta property="og:title" content="The Query That Exposed a Broken SIEM">
+<meta property="og:description" content="A capacity defect on a Wazuh/OpenSearch cluster, found while measuring detection data.">
+<meta property="og:url" content="https://brianrolly.github.io/soc-lab-writeups/indexer-heap-undersizing.html">
+<meta property="og:image" content="https://brianrolly.github.io/soc-lab-writeups/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SOC-Lab: Security Writeups - detection engineering from a self-built home SOC lab, by Brian Rollinson.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Query That Exposed a Broken SIEM">
+<meta name="twitter:description" content="A capacity defect on a Wazuh/OpenSearch cluster, found while measuring detection data.">
+<meta name="twitter:image" content="https://brianrolly.github.io/soc-lab-writeups/og-card.png">
+<link rel="canonical" href="https://brianrolly.github.io/soc-lab-writeups/indexer-heap-undersizing.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -160,6 +174,22 @@
   .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
   hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+
+  /* identity / contact */
+  .ident{margin:0 0 26px}
+  .ident-name{font-family:"IBM Plex Sans",sans-serif; font-size:1.2rem; font-weight:600;
+    color:var(--ink); letter-spacing:-.01em; margin:0 0 5px}
+  .ident-role{font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--trust-ink); margin:0 0 13px}
+  .ident-bio{font-size:.95rem; line-height:1.7; color:var(--muted); max-width:64ch; margin:0 0 18px}
+  .ident-links{display:flex; flex-wrap:wrap; gap:9px; margin:0}
+  .ident-links a{display:inline-flex; align-items:center; padding:7px 13px;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface);
+    font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:500;
+    color:var(--ink); text-decoration:none; transition:border-color .15s ease}
+  .ident-links a:hover{border-color:var(--trust); color:var(--trust-ink)}
+  .ident-links a:focus-visible{outline:2px solid var(--trust); outline-offset:2px}
+  @media (max-width:560px){ .ident-links a{flex:1 1 auto; justify-content:center} }
 </style>
 </head>
 <body>
@@ -257,7 +287,17 @@ which is larger than the limit of 972.7mb
     <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The fix was one line; the value was catching it before it mattered.</b> A monitoring platform that silently cannot answer multi-day questions is worse than one that is obviously down — at least the latter gets fixed. The investigation also produced the operational facts the team now relies on: what healthy looks like on a single-node cluster, and what is merely recovery.</p>
   </section>
 
-  <footer><p class="note"><b>Authorized lab.</b> Capacity finding on the author’s own single-node Wazuh/OpenSearch cluster, found while measuring detection data.</p></footer>
+  <footer>
+    <div class="ident">
+      <p class="ident-name">Brian Rollinson</p>
+      <p class="ident-role">SOC Operations &middot; Detection Engineering</p>
+      <div class="ident-links">
+        <a href="https://github.com/brianrolly">GitHub</a>
+        <a href="https://www.linkedin.com/in/brian-rollinson-2079581b9/">LinkedIn &mdash; best contact</a>
+        <a href="resume.pdf">R&eacute;sum&eacute;</a>
+      </div>
+    </div>
+<p class="note"><b>Authorized lab.</b> Capacity finding on the author’s own single-node Wazuh/OpenSearch cluster, found while measuring detection data.</p></footer>
 </div>
 </body>
 </html>

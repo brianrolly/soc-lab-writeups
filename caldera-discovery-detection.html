@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="Three CALDERA operations against a monitored Linux host - discovery, collection, and a full exfiltration chain - scored honestly against Wazuh auditd detections.">
-<title>Adversary Emulation Scorecard</title>
+<title>What Three Emulations Caught — and What They Missed</title>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="SOC-Lab Writeups">
+<meta property="og:title" content="What Three Emulations Caught — and What They Missed">
+<meta property="og:description" content="Three CALDERA operations against a monitored Linux host - discovery, collection, and a full exfiltration chain - scored honestly against Wazuh auditd detections.">
+<meta property="og:url" content="https://brianrolly.github.io/soc-lab-writeups/caldera-discovery-detection.html">
+<meta property="og:image" content="https://brianrolly.github.io/soc-lab-writeups/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SOC-Lab: Security Writeups - detection engineering from a self-built home SOC lab, by Brian Rollinson.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What Three Emulations Caught — and What They Missed">
+<meta name="twitter:description" content="Three CALDERA operations against a monitored Linux host - discovery, collection, and a full exfiltration chain - scored honestly against Wazuh auditd detections.">
+<meta name="twitter:image" content="https://brianrolly.github.io/soc-lab-writeups/og-card.png">
+<link rel="canonical" href="https://brianrolly.github.io/soc-lab-writeups/caldera-discovery-detection.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -192,6 +206,22 @@
   .tally .t.hit b{color:var(--trust-ink)}
   .tally .t.miss b{color:var(--attack-ink)}
   .tally .t span{font-size:.82rem; color:var(--muted)}
+
+  /* identity / contact */
+  .ident{margin:0 0 26px}
+  .ident-name{font-family:"IBM Plex Sans",sans-serif; font-size:1.2rem; font-weight:600;
+    color:var(--ink); letter-spacing:-.01em; margin:0 0 5px}
+  .ident-role{font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--trust-ink); margin:0 0 13px}
+  .ident-bio{font-size:.95rem; line-height:1.7; color:var(--muted); max-width:64ch; margin:0 0 18px}
+  .ident-links{display:flex; flex-wrap:wrap; gap:9px; margin:0}
+  .ident-links a{display:inline-flex; align-items:center; padding:7px 13px;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface);
+    font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:500;
+    color:var(--ink); text-decoration:none; transition:border-color .15s ease}
+  .ident-links a:hover{border-color:var(--trust); color:var(--trust-ink)}
+  .ident-links a:focus-visible{outline:2px solid var(--trust); outline-offset:2px}
+  @media (max-width:560px){ .ident-links a{flex:1 1 auto; justify-content:center} }
 </style>
 </head>
 <body>
@@ -224,7 +254,7 @@
         <p class="id">OP-001</p>
         <h3>First minutes on the box</h3>
         <p>37 steps of enumeration &mdash; who am I, what accounts exist, what is running. Nine rules written against it, one per behaviour. Every technique alerted.</p>
-        <p class="advy">operation <b>New op1</b> &middot; <i>agent</i> ezanbx &middot; <i>abilities</i> stock stockpile</p>
+        <p class="advy">adversary <b>Discovery</b> &middot; <i>planner</i> atomic &middot; <i>agent</i> ezanbx &middot; 37/37 steps</p>
       </div>
       <div class="op mixed">
         <p class="id">OP-002</p>
@@ -253,6 +283,22 @@ groups                     # group membership
 hostname ; uname -a        # system identity
 ip addr ; ip route         # network config</span></pre></div>
     <div class="proves"><span class="arw">the tell</span><span>A process named <b>splunkd</b> that lives in <span class="mono">/root</span> rather than a package path, spawning discovery commands. The name is meant to survive a glance at <span class="mono">ps</span>; the path is what gives it away.</span></div>
+  </section>
+
+  <section>
+    <p class="kicker">OP-001 &middot; why 34 of 37 steps were the same command</p>
+    <h2>The agent chained its own discoveries</h2>
+    <p class="lede">The step count looks like noise until you read the order. Step 2 harvested every local username; steps 3&ndash;36 then hunted each one's processes in turn. CALDERA fed the output of one ability into the parameters of the next &mdash; the same thing a human operator does, only patiently and in alphabetical order.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">fact-driven chaining, atomic planner, jitter 2/8</span></div>
+    <pre><span class="cmd">cut -d: -f1 /etc/passwd | grep -v '_' | grep -v '#'</span>
+<span class="out">   &rarr; harvested 34 usernames as facts</span>
+<span class="cmd">ps aux | grep wazuh</span>
+<span class="cmd">ps aux | grep sshd</span>
+<span class="cmd">ps aux | grep brian</span>
+<span class="cmd">ps aux | grep www-data</span>
+<span class="out">   &hellip; 34 executions, one per harvested username</span>
+<span class="cmd">groups</span></pre></div>
+    <div class="proves"><span class="arw">note</span><span>The third command is the one to sit with: <span class="mono">ps aux | grep wazuh</span>. <b>The adversary enumerated the security tooling</b> &mdash; not because it was told to, but because <span class="mono">wazuh</span> is a local user and the chain walked every user it found. Emulation surfaced a reconnaissance step nobody scripted.</span></div>
   </section>
 
   <section>
@@ -417,7 +463,17 @@ ip addr ; ip route         # network config</span></pre></div>
     <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A detection pack that only reports its hits is marketing.</b> Three emulations produced nine working rules and a nine-item defect list &mdash; five uncovered behaviours, one alert describing the wrong direction, and five rules watching the monitoring stack instead of the adversary. None of that surfaces from reading rule definitions; it surfaces from running an adversary against them and scoring the result honestly. The chain a real intrusion follows &mdash; stage, archive, exfiltrate, erase &mdash; ran end to end through a monitored host and raised two alerts. Knowing that is worth more than the nine rules that worked.</p>
   </section>
 
-  <footer><p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author's own hosts, across three operations. Addresses are documentation ranges; lab identifiers are redacted. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>
+  <footer>
+    <div class="ident">
+      <p class="ident-name">Brian Rollinson</p>
+      <p class="ident-role">SOC Operations &middot; Detection Engineering</p>
+      <div class="ident-links">
+        <a href="https://github.com/brianrolly">GitHub</a>
+        <a href="https://www.linkedin.com/in/brian-rollinson-2079581b9/">LinkedIn &mdash; best contact</a>
+        <a href="resume.pdf">R&eacute;sum&eacute;</a>
+      </div>
+    </div>
+<p class="note"><b>Authorized lab.</b> CALDERA adversary emulation against the author's own hosts, across three operations. Addresses are documentation ranges; lab identifiers are redacted. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>
 </div>
 </body>
 </html>
