@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A credentialed scan found a CVSS 9.8 in the SIEM's own bundled Node.js. This is the triage that separates version-vulnerable from actually-exploitable - three reachability checks, a vendor that ships it unfixed, and why two scanners disagreed.">
+<title>What a 9.8 Actually Means</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --ground:#EAEEF2; --surface:#FFFFFF; --surface-2:#F5F8FA;
+    --ink:#151A22; --muted:#586270; --faint:#8A93A1; --line:#DBE1E8;
+    --attack:#BE4327; --attack-ink:#8F3620; --attack-soft:#F4E1DB;
+    --trust:#0C7680; --trust-ink:#0A5B63; --trust-soft:#DCEBED;
+    --term-bg:#0D1218; --term-line:#20293490; --term-ink:#C7D0DB; --term-cmd:#EAF0F6; --term-out:#828D9C;
+    --term-atk:#E7745A; --term-siem:#3DAFB8; --term-note:#6E7A88;
+    --radius:7px; --maxw:1080px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0C1017; --surface:#141A22; --surface-2:#1A222C;
+      --ink:#E7ECF2; --muted:#9BA5B3; --faint:#69737F; --line:#28313D;
+      --attack:#E7745A; --attack-ink:#F0A08D; --attack-soft:#341C15;
+      --trust:#37AEB7; --trust-ink:#6FC8CE; --trust-soft:#123138;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0C1017; --surface:#141A22; --surface-2:#1A222C;
+    --ink:#E7ECF2; --muted:#9BA5B3; --faint:#69737F; --line:#28313D;
+    --attack:#E7745A; --attack-ink:#F0A08D; --attack-soft:#341C15;
+    --trust:#37AEB7; --trust-ink:#6FC8CE; --trust-soft:#123138;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:16px; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+  /* masthead */
+  header.mast{padding:56px 0 30px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--attack); margin:0 0 18px}
+  .eyebrow .sep{color:var(--faint); margin:0 10px}
+  h1{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:clamp(2rem,5vw,3.1rem);
+    line-height:1.05; letter-spacing:-.01em; margin:0 0 18px; text-wrap:balance}
+  .thesis{font-size:clamp(1.05rem,2.2vw,1.3rem); color:var(--muted); max-width:60ch; margin:0 0 30px}
+  .thesis b{color:var(--ink); font-weight:600}
+  .meta{display:flex; flex-wrap:wrap; gap:10px 12px; font-family:"IBM Plex Mono",monospace; font-size:.8rem}
+  .chip{display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border:1px solid var(--line);
+    border-radius:var(--radius); background:var(--surface); color:var(--muted)}
+  .chip b{color:var(--ink); font-weight:500}
+  .chip.ok{border-color:var(--trust); color:var(--trust-ink); background:var(--trust-soft)}
+  .chip .dot{width:7px; height:7px; border-radius:50%; background:var(--trust)}
+
+  section{padding:34px 0}
+  .kicker{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 8px}
+  h2{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:1.5rem; margin:0 0 6px; letter-spacing:-.01em}
+  .lede{color:var(--muted); max-width:64ch; margin:0 0 26px}
+
+  /* diagram */
+  figure.flow{margin:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:26px 20px 14px; overflow:hidden}
+  .flow-scroll{overflow-x:auto; padding-bottom:6px}
+  figure.flow svg{display:block; width:100%; min-width:760px; height:auto}
+  figcaption{font-size:.9rem; color:var(--muted); margin-top:14px; padding-top:14px; border-top:1px solid var(--line)}
+  figcaption b{color:var(--ink); font-weight:600}
+  .svg-zone{font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase}
+  .svg-title{font-family:"IBM Plex Mono",monospace; font-size:13.5px; font-weight:600}
+  .svg-sub{font-family:"IBM Plex Mono",monospace; font-size:11px}
+  .svg-arrow-lbl{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500}
+  .n-box{fill:var(--surface); stroke:var(--line); stroke-width:1.5}
+  .n-atk{stroke:var(--attack)}
+  .n-trust{stroke:var(--trust)}
+  .n-t{fill:var(--ink)}
+  .n-atk-t{fill:var(--attack-ink)}
+  .n-trust-t{fill:var(--trust-ink)}
+  .n-sub{fill:var(--muted)}
+  .edge{stroke:var(--faint); stroke-width:1.6; fill:none}
+  .edge-atk{stroke:var(--attack); stroke-width:2.4; fill:none}
+  .edge-lbl{fill:var(--muted)}
+  .edge-lbl-atk{fill:var(--attack-ink)}
+  .boundary{stroke:var(--attack); stroke-width:1.6; stroke-dasharray:6 5; opacity:.75}
+  .boundary-lbl{fill:var(--attack); font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:.18em}
+  .zone-atk{fill:var(--attack)}
+  .zone-trust{fill:var(--trust)}
+
+  /* steps */
+  .steps{display:flex; flex-direction:column; gap:18px}
+  .step{border:1px solid var(--line); border-radius:12px; background:var(--surface); overflow:hidden}
+  .step-head{display:flex; align-items:baseline; gap:14px; padding:16px 20px 12px}
+  .step-num{font-family:"IBM Plex Mono",monospace; font-size:1.1rem; font-weight:600; color:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .step-title{font-weight:600; font-size:1.05rem; margin:0; flex:1}
+  .host-tag{font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:500; letter-spacing:.06em;
+    padding:4px 9px; border-radius:20px; white-space:nowrap; text-transform:lowercase}
+  .host-tag.atk{background:var(--attack-soft); color:var(--attack-ink)}
+  .host-tag.siem{background:var(--trust-soft); color:var(--trust-ink)}
+
+  .term{background:var(--term-bg); margin:0 14px 14px; border-radius:8px; border:1px solid var(--term-line)}
+  .term-head{display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--term-line);
+    font-family:"IBM Plex Mono",monospace; font-size:.74rem}
+  .term-host{font-weight:600}
+  .term-host.atk{color:var(--term-atk)}
+  .term-host.siem{color:var(--term-siem)}
+  .term-what{color:var(--term-note); margin-left:auto}
+  .term pre{margin:0; padding:13px 16px; overflow-x:auto; font-family:"IBM Plex Mono",monospace;
+    font-size:.82rem; line-height:1.65; color:var(--term-out)}
+  .term .cmd{color:var(--term-cmd); display:block; white-space:pre-wrap; word-break:break-word}
+  .term .cmd::before{content:"$ "; color:var(--term-atk)}
+  .term.siem .cmd::before{color:var(--term-siem)}
+  .term .out{color:var(--term-out); display:block; white-space:pre-wrap; word-break:break-word}
+  .term .hl-atk{color:var(--term-atk); font-weight:600}
+  .term .hl-trust{color:var(--term-siem); font-weight:600}
+  .proves{display:flex; gap:10px; padding:0 20px 18px; font-size:.92rem; color:var(--muted)}
+  .proves .arw{color:var(--trust); font-weight:600; font-family:"IBM Plex Mono",monospace; flex-shrink:0}
+  .proves b{color:var(--ink); font-weight:600}
+
+  /* analysis grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:16px}
+  .card{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:20px 22px}
+  .card.flaw{border-left:3px solid var(--attack)}
+  .card.impact{border-left:3px solid var(--attack)}
+  .card.tell{border-left:3px solid var(--trust)}
+  .card h3{font-family:"IBM Plex Mono",monospace; font-size:.78rem; letter-spacing:.12em; text-transform:uppercase;
+    margin:0 0 12px; color:var(--faint)}
+  .card p{margin:0 0 10px; font-size:.95rem}
+  .card p:last-child{margin-bottom:0}
+  .card code{font-family:"IBM Plex Mono",monospace; font-size:.85em; background:var(--surface-2);
+    padding:2px 6px; border-radius:4px; color:var(--attack-ink)}
+  .card.tell code{color:var(--trust-ink)}
+
+  /* mitre / remediation */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:680px){.split{grid-template-columns:1fr}}
+  .att{display:flex; flex-direction:column; gap:8px}
+  .att-row{display:flex; gap:12px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line)}
+  .att-row:last-child{border-bottom:0}
+  .att-id{font-family:"IBM Plex Mono",monospace; font-size:.8rem; font-weight:600; color:var(--attack-ink);
+    min-width:92px}
+  .att-name{font-size:.92rem; color:var(--muted)}
+  .fix{display:flex; flex-direction:column; gap:12px}
+  .fix-item{display:flex; gap:12px; align-items:baseline}
+  .fix-tag{font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600; padding:3px 8px; border-radius:5px;
+    white-space:nowrap}
+  .fix-tag.now{background:var(--attack-soft); color:var(--attack-ink)}
+  .fix-tag.det{background:var(--trust-soft); color:var(--trust-ink)}
+  .fix-item p{margin:0; font-size:.93rem}
+  .fix-item b{font-weight:600}
+
+  footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
+  .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
+  .note b{color:var(--muted)}
+  hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+
+  /* multi-op additions */
+  .vd{font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600; padding:3px 8px;
+    border-radius:5px; white-space:nowrap; display:inline-block}
+  .vd.hit{background:var(--trust-soft); color:var(--trust-ink)}
+  .vd.miss{background:var(--attack-soft); color:var(--attack-ink)}
+  .vd.part{background:var(--surface-2); color:var(--muted); border:1px solid var(--line)}
+  table.dt{width:100%; border-collapse:collapse; font-size:.9rem; min-width:620px}
+  table.dt th{text-align:left; padding:9px 14px 9px 0; font-family:"IBM Plex Mono",monospace; font-size:.72rem;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:500; border-bottom:1px solid var(--line)}
+  table.dt td{padding:8px 14px 8px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  table.dt tr:last-child td{border-bottom:0}
+  table.dt td.m{font-family:"IBM Plex Mono",monospace; font-size:.84rem; font-variant-numeric:tabular-nums}
+  .ops{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:16px}
+  .op{border:1px solid var(--line); border-left:3px solid var(--trust); border-radius:12px;
+    background:var(--surface); padding:18px 20px}
+  .op.mixed{border-left-color:var(--attack)}
+  .op .id{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 8px}
+  .op h3{margin:0 0 8px; font-size:1rem; font-weight:600}
+  .op p{margin:0; font-size:.92rem; color:var(--muted)}
+  .op .advy{font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--faint);
+    margin:12px 0 0; padding-top:11px; border-top:1px solid var(--line)}
+  .op .advy b{color:var(--trust-ink); font-weight:600}
+  .op .advy i{font-style:normal; color:var(--muted)}
+  .tally{display:flex; gap:10px; flex-wrap:wrap; margin:0 0 22px}
+  .tally .t{flex:1; min-width:150px; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface); padding:14px 16px}
+  .tally .t b{display:block; font-family:"IBM Plex Mono",monospace; font-size:1.6rem; line-height:1.2}
+  .tally .t.hit b{color:var(--trust-ink)}
+  .tally .t.miss b{color:var(--attack-ink)}
+  .tally .t span{font-size:.82rem; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p style="padding-top:22px;margin:0"><a href="./" style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.04em;color:var(--muted);text-decoration:none">&larr; Portfolio</a></p>
+  <header class="mast">
+    <p class="eyebrow">Vulnerability Validation<span class="sep">/</span>Triage<span class="sep">/</span>Portfolio</p>
+    <h1>What a 9.8 Actually Means</h1>
+    <p class="thesis">A credentialed scan of my own SIEM returned a <b>CVSS 9.8 Critical</b>. The number says <i>drop everything</i>. The work says something more precise &mdash; and doing that work is the difference between an analyst and a scanner.</p>
+    <div class="meta">
+      <span class="chip"><b>Finding</b> CVSS 9.8 &middot; bundled Node.js</span>
+      <span class="chip"><b>Method</b> credentialed Nessus + OpenVAS</span>
+      <span class="chip ok"><span class="dot"></span>triaged &middot; not RCE &middot; still real</span>
+    </div>
+  </header>
+  <hr class="rule">
+
+  <section style="padding-bottom:6px">
+    <p class="kicker">Overview</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Anyone can run a scanner and forward the PDF. The skill a SOC actually pays for starts <b>after</b> the scan: taking a red <span class="mono">CRITICAL</span> and determining what it means <i>in this deployment</i>. This is that process, start to finish, on a real 9.8 &mdash; the checks, the evidence, the vendor dead-end, and the honest verdict.</p>
+  </section>
+
+  <section>
+    <p class="kicker">The finding</p>
+    <h2>A critical, in the monitoring stack itself</h2>
+    <p class="lede">An authenticated scan read the actual installed versions on the SIEM host. Buried in the results: a CVSS 9.8 in the <b>Node.js runtime bundled inside the dashboard</b> &mdash; version 18.19.0, seven CVEs, base score 9.8.</p>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-m &middot; credentialed scan</span><span class="term-what">plugin 190856</span></div>
+    <pre><span class="out">Path              : /usr/share/wazuh-dashboard/node/bin/node
+Installed version : 18.19.0
+Fixed version     : 18.19.1
+CVSS v3.0         : <span class="hl-atk">9.8 (CRITICAL)</span>
+CVEs              : CVE-2023-46809, CVE-2024-21890, -21891,
+                    -21892, -21896, -22017, -22019</span></pre></div>
+    <div class="proves"><span class="arw">and worse</span><span>That exact binary is not sitting idle on disk. It <b>is the process listening on the network</b> &mdash; the dashboard people log into.</span></div>
+    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">ss -tlnp</span></div>
+    <pre><span class="cmd">ss -tlnp | grep :443</span>
+<span class="out">LISTEN 0.0.0.0:443  users:(("<span class="hl-atk">node</span>",pid=737))</span></pre></div>
+  </section>
+
+  <section>
+    <p class="kicker">The instinct, and why it's wrong</p>
+    <h2>9.8 does not mean &ldquo;pop a shell&rdquo;</h2>
+    <p class="lede">A 9.8 on an internet-facing service reads as unauthenticated remote code execution. But the score is an <b>aggregate</b> &mdash; the scanner stamps the whole Node.js release bundle with the highest base score in the set. Decompose the bundle and not one constituent is a remote RCE against this host. Each needs a precondition this deployment doesn't meet.</p>
+    <div class="flow-scroll">
+    <table class="dt">
+      <thead><tr><th>CVE(s)</th><th>Class</th><th>Precondition to exploit</th><th>Here?</th></tr></thead>
+      <tbody>
+        <tr><td class="m">21890 / 21891 / 21896</td><td>Permission-model bypass</td><td>node started with <span class="mono">--experimental-permission</span></td><td><span class="vd miss">flag not set</span></td></tr>
+        <tr><td class="m">21892</td><td>Env-var code injection</td><td>set the process env + run privileged</td><td><span class="vd miss">unprivileged</span></td></tr>
+        <tr><td class="m">22017</td><td>setuid group drop</td><td>local code execution first</td><td><span class="vd miss">need foothold</span></td></tr>
+        <tr><td class="m">2023-46809</td><td>RSA timing (Marvin)</td><td>decryption oracle, millions of timed queries</td><td><span class="vd part">research-grade</span></td></tr>
+        <tr><td class="m">22019</td><td>HTTP DoS</td><td>reachable HTTP server &mdash; no shell, no data</td><td><span class="vd part">DoS only</span></td></tr>
+      </tbody></table></div>
+    <div class="proves" style="margin-top:18px"><span class="arw">the insight</span><span>CVSS base scores <b>bake in deployment assumptions</b>. The network-vector, high-impact numbers on the permission-model CVEs assume the permission model is a security boundary in use. It isn't. The scanner can't know that &mdash; establishing it is the analyst's job, the exact job the number tries to shortcut.</span></div>
+  </section>
+
+  <section>
+    <p class="kicker">The evidence</p>
+    <h2>Three checks, three dormant code paths</h2>
+    <p class="lede">Assertion isn't validation. Each claim above is a command against the live host &mdash; and all three say the vulnerable code is present but never reached by the running configuration.</p>
+    <div class="grid">
+      <div class="card tell"><h3>Permission model &mdash; off</h3><p>The high-scoring CVEs need Node's experimental permission sandbox enabled. It isn't.</p><p><span class="mono">/proc/737/cmdline</span> &rarr;<br><code>--no-warnings --max-http-header-size&hellip;</code><br>no <code>--experimental-permission</code>. You can't bypass a boundary that was never turned on.</p></div>
+      <div class="card tell"><h3>HTTP/2 &mdash; not spoken</h3><p>The one CVE with a public exploit is an HTTP/2-only DoS. The dashboard doesn't offer HTTP/2.</p><p><code>openssl s_client -alpn h2,http/1.1</code> &rarr;<br><code>ALPN protocol: <b>http/1.1</b></code>. The vulnerable frame handler is never reached.</p></div>
+      <div class="card tell"><h3>Front-end proxy &mdash; none</h3><p>The request-smuggling CVE only bites when a proxy parses headers differently than the Node backend.</p><p>The dashboard is the terminating server &mdash; no proxy in front, no desync to exploit.</p></div>
+    </div>
+    <div class="proves" style="margin-top:18px"><span class="arw">pattern</span><span>Same shape three times over: <b>vulnerable component shipped, vulnerable code path not instantiated.</b> Version-vulnerable is not the same as exploitable, and you only learn the difference by inspecting the actual deployment.</span></div>
+  </section>
+
+  <section>
+    <p class="kicker">The dead end</p>
+    <h2>The vendor's current release ships it unfixed</h2>
+    <p class="lede">The obvious remediation is &ldquo;upgrade.&rdquo; So I checked what the next release actually contains &mdash; downloaded the candidate packages and inspected them without installing. Both the Node runtime and the log4j the same scan flagged are <b>unchanged</b>.</p>
+    <div class="flow-scroll">
+    <table class="dt">
+      <thead><tr><th>Component</th><th>Installed</th><th>Next vendor release</th><th>Actually fixed in</th></tr></thead>
+      <tbody>
+        <tr><td>Node.js (dashboard)</td><td class="m">18.19.0</td><td class="m" style="color:var(--attack-ink)">18.19.0 &mdash; unchanged</td><td class="m">18.19.1</td></tr>
+        <tr><td>log4j-core (indexer)</td><td class="m">2.25.3</td><td class="m" style="color:var(--attack-ink)">2.25.3 &mdash; unchanged</td><td class="m">2.25.4</td></tr>
+      </tbody></table></div>
+    <div class="proves" style="margin-top:18px"><span class="arw">so</span><span>This is a <b>vendor-pinned</b> vulnerability, not a patch backlog. Upgrading to the current release leaves the 9.8 in place. The fix has to be architectural, not <span class="mono">apt upgrade</span>.</span></div>
+  </section>
+
+  <section>
+    <p class="kicker">Reality check</p>
+    <h2>Twenty CVEs. One runnable exploit. It can't reach here.</h2>
+    <p class="lede">The full credentialed scan returned 20 CVEs across the bundled runtimes. I searched for public proof-of-concept code for every one. The result is the whole thesis in a single line.</p>
+    <div class="tally">
+      <div class="t"><b>20</b><span>CVEs found (all bundled runtimes)</span></div>
+      <div class="t"><b>1</b><span>with clone-and-run POC code</span></div>
+      <div class="t miss"><b>0</b><span>that reach this endpoint as deployed</span></div>
+    </div>
+    <p class="lede" style="margin-top:4px">The single packaged POC targets the HTTP/2 DoS &mdash; and the ALPN check already proved the dashboard speaks only HTTP/1.1. The Windows command-injection CVE has loud public exploits, but this is Linux. The permission-model bugs need the flag that's off. The log4j log-injection has no public POC at all. <b>Nothing in the set is both weaponized and reachable.</b></p>
+  </section>
+
+  <section>
+    <p class="kicker">The second opinion</p>
+    <h2>Two scanners, same host, opposite blind spots</h2>
+    <p class="lede">I ran a second credentialed scanner (OpenVAS) against the identical targets with the same SSH credential. It did not corroborate the finding &mdash; it <b>never saw it</b>. And it found things the first scanner missed. Their actionable results barely overlap.</p>
+    <div class="flow-scroll">
+    <table class="dt">
+      <thead><tr><th>Finding</th><th>Nessus</th><th>OpenVAS</th></tr></thead>
+      <tbody>
+        <tr><td>Bundled Node.js 9.8 + highs</td><td><span class="vd hit">found</span></td><td><span class="vd miss">missed</span></td></tr>
+        <tr><td>Bundled log4j CVEs</td><td><span class="vd hit">found</span></td><td><span class="vd miss">missed</span></td></tr>
+        <tr><td>AMD CPU microcode (SB-1038/9)</td><td><span class="vd miss">missed</span></td><td><span class="vd hit">found</span></td></tr>
+        <tr><td>Patched OS packages (ssh/ssl/sudo)</td><td>omitted &mdash; correct</td><td>severity-0 log &mdash; correct</td></tr>
+      </tbody></table></div>
+    <div class="grid" style="margin-top:22px">
+      <div class="card flaw"><h3>Why one saw it and one didn't</h3><p>Nessus walks the filesystem hunting runtimes <b>bundled inside</b> other packages &mdash; it found <code>node</code> and the log4j jar by path. OpenVAS matches <b>dpkg-registered</b> packages against advisories; a runtime vendored inside another package isn't a dpkg entry, so it's invisible to that method.</p></div>
+      <div class="card tell"><h3>The lesson</h3><p>A second scanner isn't redundant belt-and-suspenders &mdash; it covers different ground. The most severe issue in the environment was visible to <b>exactly one of the two</b>. Run only the other, and the 9.8 in the SIEM goes unseen.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">The verdict</p>
+    <h2>Not RCE. Still a real finding.</h2>
+    <p class="lede">Triage that only ever says &ldquo;false alarm&rdquo; is as useless as a scanner that only says &ldquo;critical.&rdquo; The honest conclusion here is neither.</p>
+    <div class="split">
+      <div class="att">
+        <div class="att-row"><span class="att-id">What it's not</span><span class="att-name">A pop-a-shell 9.8. No remote RCE primitive exists in this bundle, and every reachable path is dormant.</span></div>
+        <div class="att-row"><span class="att-id">What it is</span><span class="att-name">An internet-facing, unpatched, <b>vendor-pinned</b> runtime. The next Node CVE that <i>is</i> a clean RCE lands on this same exposed surface.</span></div>
+        <div class="att-row"><span class="att-id">Real risk</span><span class="att-name">Not &ldquo;exploited today.&rdquo; It's &ldquo;why is a runtime the vendor won't patch answering the whole internet at all.&rdquo;</span></div>
+      </div>
+      <div class="fix">
+        <div class="fix-item"><span class="fix-tag now">Fix</span><p><b>Restrict reach, since you can't patch what's pinned.</b> Source-restrict the dashboard to known-good networks, or bind it to loopback and reach it over a tunnel &mdash; the same control already applied to the C2 admin panel in this lab.</p></div>
+        <div class="fix-item"><span class="fix-tag det">Track</span><p>Treat the bundled runtime as a standing exposure with a vendor dependency: re-scan on each release, escalate to the vendor, and hold the compensating control until the pin is lifted.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">Takeaway</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A CVSS score is a starting point, not a verdict.</b> The 9.8 was real, the component was real, and it faced the internet &mdash; and it still wasn't the emergency the number implied, because three checks against the running config showed the vulnerable code was never reached. That gap, in both directions, is the whole job: a scanner reports what it has a plugin for; an analyst determines what's true here. The finding that mattered most in this environment was pinned by a vendor, invisible to one of two scanners, and only understandable after the number stopped being the answer and started being the question.</p>
+  </section>
+
+  <footer><p class="note"><b>Authorized lab.</b> Credentialed vulnerability scanning of the author's own single-node Wazuh SIEM, with the operator's own service account. All exploitation analysis is assessment only &mdash; no exploit was run against production. Lab addresses shown as RFC&nbsp;5737 documentation ranges; component paths and CVE identifiers are public. Components: Node.js 18.19.0 (CVE-2023-46809, CVE-2024-21890/-21891/-21892/-21896/-22017/-22019 and later bundles); Apache log4j-core 2.25.3 (CVE-2026-34477/-34478/-34480/-49844).</p></footer>
+</div>
+</body>
+</html>
