@@ -520,8 +520,8 @@ sshd PID companion line    <span class="hl-atk">none</span>     present    17/17
       </div>
       <div class="card flaw">
         <h3>Detection needed telemetry first</h3>
-        <p>Before any rule could be written, the pipeline had a hole: <span class="mono">api.log</span> and <span class="mono">ossec.log</span> were <b>not being ingested</b>, so the API 401s and the enrollment lines never reached analysis.</p>
-        <p>Both were added as <span class="mono">localfile</span> sources. The lesson is order of operations — <b>you cannot detect what you are not collecting</b>, and a rule written over a gap is a rule that silently never fires.</p>
+        <p>At the time of the exercise, the Wazuh manager was already writing API authentication failures to <span class="mono">/var/ossec/logs/api.log</span> and enrollment messages to <span class="mono">/var/ossec/logs/ossec.log</span>. But neither path was declared as a <span class="mono">&lt;localfile&gt;</span> input in <span class="mono">/var/ossec/etc/ossec.conf</span>, so those records never reached Wazuh's decoders and rules.</p>
+        <p>Adding the two <span class="mono">&lt;localfile&gt;</span> entries completed the pipeline: <b>file &rarr; collection &rarr; decoding &rarr; rule &rarr; alert</b>. You cannot detect what you do not collect; a correct rule above a missing input sees nothing and silently never fires.</p>
       </div>
     </div>
   </section>
