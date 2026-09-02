@@ -8,7 +8,7 @@
 <title>What a 9.8 Actually Means</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
 
 <style>
   :root{
@@ -204,6 +204,7 @@
     <div class="meta">
       <span class="chip"><b>Finding</b> CVSS 9.8 &middot; bundled Node.js</span>
       <span class="chip"><b>Method</b> credentialed Nessus + OpenVAS</span>
+      <span class="chip"><b>Scope</b> Wazuh 4.14.5 &middot; 2026-08-31</span>
       <span class="chip ok"><span class="dot"></span>triaged &middot; not RCE &middot; still real</span>
     </div>
   </header>
@@ -212,6 +213,7 @@
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
     <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Anyone can run a scanner and forward the PDF. The skill a SOC actually pays for starts <b>after</b> the scan: taking a red <span class="mono">CRITICAL</span> and determining what it means <i>in this deployment</i>. This is that process, start to finish, on a real 9.8 &mdash; the checks, the evidence, the vendor dead-end, and the honest verdict.</p>
+    <p class="note" style="margin-top:16px"><b>Assessment scope.</b> On 2026-08-31, Nessus and OpenVAS ran credentialed checks against the same Wazuh&nbsp;4.14.5 host using the same authorized SSH access. The follow-up commands shown here were read-only. I did not send a resource-exhaustion or privilege-escalation payload to the live SIEM.</p>
   </section>
 
   <section>
@@ -229,18 +231,24 @@ CVEs              : CVE-2023-46809, CVE-2024-21890, -21891,
     <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">ss -tlnp</span></div>
     <pre><span class="cmd">ss -tlnp | grep :443</span>
 <span class="out">LISTEN 0.0.0.0:443  users:(("<span class="hl-atk">node</span>",pid=737))</span></pre></div>
+    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">resolve the listener to its executable and version</span></div>
+    <pre><span class="cmd">readlink -f /proc/737/exe</span>
+<span class="out">/usr/share/wazuh-dashboard/node/bin/node</span>
+<span class="cmd">/proc/737/exe --version</span>
+<span class="out"><span class="hl-atk">v18.19.0</span></span></pre></div>
+    <div class="proves"><span class="arw">identity</span><span>The listener resolves to the <b>same path and version</b> the credentialed plugin reported. This closes the gap between a vulnerable file found on disk and the process actually serving TCP&nbsp;443.</span></div>
     <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">and what privilege does that listener actually hold?</span></div>
     <pre><span class="cmd">grep -E 'Uid|CapEff' /proc/737/status; capsh --decode=0x400</span>
 <span class="out">Uid:     111  111  111  111
 CapEff:  0000000000000400
 0x0000000000000400 = <span class="hl-trust">cap_net_bind_service</span>   &mdash; and nothing else</span></pre></div>
-    <div class="proves"><span class="arw">the subtlety</span><span>It runs as an unprivileged service account (UID&nbsp;111) with <b>exactly one</b> capability: <span class="mono">cap_net_bind_service</span>, the grant that lets a non-root process bind a port below&nbsp;1024. That capability is the <b>intended exception</b> in CVE-2024-21892 &mdash; Node deliberately treats a process holding only <span class="mono">cap_net_bind_service</span> as safe. The bug is that Node <i>mistakenly extends</i> that exemption to processes that <b>also hold other capabilities</b> &mdash; and this one holds none. So the vulnerable condition isn't &ldquo;met but unreachable&rdquo;; it is simply <b>absent</b>. The chain settles it end to end: <span class="mono">tcp/443 &rarr; pid&nbsp;737 &rarr; node &rarr; uid&nbsp;111 &rarr; CapEff&nbsp;0x400 &rarr; only cap_net_bind_service &rarr; the advisory's safe case</span>.</span></div>
+    <div class="proves"><span class="arw">the subtlety</span><span>It runs as an unprivileged service account (UID&nbsp;111) with <b>exactly one</b> capability: <span class="mono">cap_net_bind_service</span>, the grant that lets a non-root process bind a port below&nbsp;1024. That capability is the <b>intended exception</b> to Node's environment-variable filtering rule in CVE-2024-21892. The bug is that Node <i>mistakenly extends</i> that exemption to processes that <b>also hold other capabilities</b> &mdash; and this one holds none. So the vulnerable capability combination isn't &ldquo;met but unreachable&rdquo;; it is simply <b>absent</b>. The chain settles it end to end: <span class="mono">tcp/443 &rarr; pid&nbsp;737 &rarr; node&nbsp;18.19.0 &rarr; uid&nbsp;111 &rarr; CapEff&nbsp;0x400 &rarr; only cap_net_bind_service &rarr; intended exception</span>.</span></div>
   </section>
 
   <section>
     <p class="kicker">The instinct, and why it's wrong</p>
     <h2>9.8 does not mean &ldquo;pop a shell&rdquo;</h2>
-    <p class="lede">A 9.8 on an internet-facing service reads as unauthenticated remote code execution. But the score is an <b>aggregate</b>, and the bundle spans three release lines &mdash; Node&nbsp;18, 20 and 21. The installed runtime is <b>Node&nbsp;18 (&ldquo;Hydrogen&rdquo;)</b>. Decompose the bundle against the actual branch and the 9.8 evaporates: its top-scoring CVEs are permission-model bugs that <b>don't exist in Node&nbsp;18</b> &mdash; they belong to the Node&nbsp;20/21 portions of the plugin. Of the seven, only three touch this branch, and none is a remote RCE.</p>
+    <p class="lede">A 9.8 on an internet-facing service reads as unauthenticated remote code execution. But the score is an <b>aggregate</b>, and the bundle spans three release lines &mdash; Node&nbsp;18, 20 and 21. The installed runtime is <b>Node&nbsp;18 (&ldquo;Hydrogen&rdquo;)</b>. Decompose the bundle against the actual branch and the host-level 9.8 interpretation evaporates: its top-scoring CVEs are permission-model bugs that <b>don't exist in Node&nbsp;18</b> &mdash; they belong to the Node&nbsp;20/21 portions of the plugin. Of the seven, only three touch this branch, and none is a remote RCE.</p>
     <div class="flow-scroll">
     <table class="dt">
       <thead><tr><th>CVE(s)</th><th>Class</th><th>In Node&nbsp;18.x?</th><th>Reachable here?</th></tr></thead>
@@ -248,7 +256,7 @@ CapEff:  0000000000000400
         <tr><td class="m">21890 / 21891 / 21896</td><td>Permission-model bypass</td><td><span class="vd part">no &mdash; Node 20/21 only</span></td><td>the 9.8 lives here</td></tr>
         <tr><td class="m">22017</td><td>setuid / io_uring</td><td><span class="vd part">no &mdash; Node 20/21 only</span></td><td>&mdash;</td></tr>
         <tr><td class="m">21892</td><td>Linux-capabilities privesc</td><td>yes</td><td><span class="vd part">no &mdash; only the exempted cap held</span></td></tr>
-        <tr><td class="m">2023-46809</td><td>RSA timing (Marvin)</td><td>yes</td><td><span class="vd part">impractical &mdash; research-grade</span></td></tr>
+        <tr><td class="m">2023-46809</td><td>RSA timing (Marvin)</td><td>yes</td><td><span class="vd part">not demonstrated &mdash; needs a remote privateDecrypt() timing oracle</span></td></tr>
         <tr><td class="m">22019</td><td>HTTP/1.1 chunked-ext DoS</td><td>yes</td><td><span class="vd miss">plausibly &mdash; HTTP/1.1 is exposed</span></td></tr>
       </tbody></table></div>
     <div class="proves" style="margin-top:18px"><span class="arw">the insight</span><span>The plugin's 9.8 is driven by CVEs that aren't in this runtime's release line at all &mdash; a branch error the plugin can't catch, because it <i>&ldquo;has not tested for these issues but has instead relied only on the application's self-reported version number.&rdquo;</i> (Separately, Tenable's own VPR for plugin&nbsp;190856 was <b>4.9</b> at scan time &mdash; a distinct threat-priority signal, and a low one.) Version-matching a mixed-branch bundle is not the same as assessing a host.</span></div>
@@ -262,7 +270,7 @@ CapEff:  0000000000000400
       <div class="card tell"><h3>Permission model &mdash; not in this branch</h3><p>The high-scoring CVEs target Node's permission model, which was added in Node&nbsp;20 (&ldquo;Iron&rdquo;). This runtime is Node&nbsp;18 (&ldquo;Hydrogen&rdquo;) &mdash; the feature, and those CVEs, don't exist here.</p><p><span class="mono">/proc/737/cmdline</span> shows no <code>--experimental-permission</code>, because Node&nbsp;18 has no such flag. Not a config gap &mdash; a <b>branch mismatch</b>.</p></div>
       <div class="card tell"><h3>HTTP/2 &mdash; not spoken</h3><p>The two HTTP/2 DoS CVEs (including the one with a public POC) need the server to speak HTTP/2. The dashboard doesn't offer it.</p><p><code>openssl s_client -alpn h2,http/1.1</code> &rarr;<br><code>ALPN protocol: <b>http/1.1</b></code>. Those frame handlers are never reached.</p></div>
       <div class="card tell"><h3>Front-end proxy &mdash; none</h3><p>The request-smuggling CVE only bites when a proxy parses headers differently than the Node backend.</p><p>The dashboard is the terminating server &mdash; no proxy in front, no desync to exploit.</p></div>
-      <div class="card flaw"><h3>HTTP/1.1 &mdash; spoken, and this is the one live edge</h3><p>CVE-2024-22019 is an HTTP/1.1 chunked-extension DoS, and the dashboard answers HTTP/1.1. This is the one path validation does <b>not</b> retire.</p><p>Availability only &mdash; no shell, no data &mdash; but plausibly reachable, so it stays on the board. Honest triage keeps it there.</p></div>
+      <div class="card flaw"><h3>HTTP/1.1 &mdash; spoken, and this is the one live edge</h3><p>CVE-2024-22019 is an HTTP/1.1 chunked-extension DoS, and the dashboard answers HTTP/1.1. This establishes protocol reachability, but not reproduced resource exhaustion.</p><p>Availability only &mdash; no shell, no data &mdash; and plausibly reachable, so it stays on the board. I did not send the destructive payload to the live SIEM; confirming impact belongs on a disposable clone.</p></div>
     </div>
     <div class="proves" style="margin-top:18px"><span class="arw">pattern</span><span>The shape holds for nearly all of them: <b>vulnerable component shipped, vulnerable code path not instantiated.</b> The one exception &mdash; an HTTP/1.1 DoS &mdash; is what proves the method works: validation surfaces the single real edge instead of dismissing the whole set.</span></div>
   </section>
@@ -270,10 +278,10 @@ CapEff:  0000000000000400
   <section>
     <p class="kicker">The dead end</p>
     <h2>The vendor's current release ships it unfixed</h2>
-    <p class="lede">The obvious remediation is &ldquo;upgrade.&rdquo; So I checked what the next release actually contains &mdash; downloaded the candidate packages and inspected them without installing. Both the Node runtime and the log4j the same scan flagged are <b>unchanged</b>.</p>
+    <p class="lede">The obvious remediation is &ldquo;upgrade.&rdquo; The host was running Wazuh&nbsp;4.14.5, so I downloaded the 4.14.7 candidate packages from the vendor repository and inspected them without installing. Package listing identified the bundled log4j jar; extracting the dashboard payload and running its bundled Node binary with <span class="mono">--version</span> identified the runtime. Both components the scan flagged are <b>unchanged</b>.</p>
     <div class="flow-scroll">
     <table class="dt">
-      <thead><tr><th>Component</th><th>Installed</th><th>Next vendor release</th><th>Plugin clears at</th></tr></thead>
+      <thead><tr><th>Component</th><th>Wazuh 4.14.5</th><th>Wazuh 4.14.7 package</th><th>Plugin clears at</th></tr></thead>
       <tbody>
         <tr><td>Node.js (dashboard)</td><td class="m">18.19.0</td><td class="m" style="color:var(--attack-ink)">18.19.0 &mdash; unchanged</td><td class="m">18.19.1</td></tr>
         <tr><td>log4j-core (indexer)</td><td class="m">2.25.3</td><td class="m" style="color:var(--attack-ink)">2.25.3 &mdash; unchanged</td><td class="m">2.25.5</td></tr>
@@ -284,22 +292,22 @@ CapEff:  0000000000000400
   <section>
     <p class="kicker">Reality check</p>
     <h2>Twenty CVEs. Validation narrows them to one.</h2>
-    <p class="lede">The full credentialed scan returned 20 CVEs across the bundled runtimes. Branch applicability, then deployment reachability, then a public-POC search for each. The result is the whole thesis in four numbers.</p>
+    <p class="lede">Seven CVEs came from the 9.8 finding above. Additional Node.js release-bundle findings and four log4j findings brought the credentialed-scan inventory to 20 CVEs across the two bundled runtimes. Branch applicability, then deployment reachability, then a public-PoC search for each produced the four numbers below.</p>
     <div class="tally">
       <div class="t"><b>20</b><span>CVEs Nessus associated with this host</span></div>
       <div class="t"><b>9</b><span>don't apply here &mdash; wrong branch or wrong OS</span></div>
       <div class="t miss"><b>1</b><span>plausibly reachable &mdash; HTTP/1.1 DoS, no RCE</span></div>
       <div class="t"><b>0</b><span>remote RCE primitives identified</span></div>
     </div>
-    <p class="lede" style="margin-top:4px">One clone-and-run POC exists in the whole set &mdash; an HTTP/2 DoS (CVE-2024-27983) &mdash; and the ALPN check shows the dashboard speaks no HTTP/2, so it can't reach here. The Windows command-injection CVE has loud public exploits, but this is Linux. The permission-model bugs aren't in this release line. The log4j log-injection has no public POC at all. One HTTP/1.1 availability issue stays plausibly reachable. <b>No remote RCE primitive was identified, and no public RCE POC was found as of 2026-08-31 &mdash; and &ldquo;no public POC&rdquo; is not the same as &ldquo;safe.&rdquo;</b></p>
+    <p class="lede" style="margin-top:4px">I found one public clone-and-run PoC in the set as of 2026-08-31: an HTTP/2 DoS (CVE-2024-27983). The ALPN check shows the dashboard speaks no HTTP/2, so that PoC cannot reach this endpoint. The Windows command-injection CVE has public exploit code, but this host is Linux. The permission-model bugs aren't in this release line. I found no public PoC for the log4j log-injection. One HTTP/1.1 availability issue stays plausibly reachable. <b>No remotely reachable RCE primitive was identified in this Linux deployment, and &ldquo;no public PoC found&rdquo; is not the same as &ldquo;safe.&rdquo;</b></p>
 
     <div class="flow-scroll" style="margin-top:26px">
     <table class="dt">
       <thead><tr><th>CVE</th><th>Component &middot; class</th><th>Disposition</th></tr></thead>
       <tbody>
-        <tr><td class="m">2024-22019</td><td>Node 18 &middot; HTTP/1.1 chunked-ext DoS</td><td><span class="vd miss">plausibly reachable &mdash; availability only</span></td></tr>
-        <tr><td class="m">2023-46809</td><td>Node 18 &middot; RSA timing (Marvin)</td><td><span class="vd part">applies, not reachable &mdash; research-grade oracle</span></td></tr>
-        <tr><td class="m">2024-21892</td><td>Node 18 &middot; Linux-capabilities privesc</td><td><span class="vd part">not reachable &mdash; holds only CAP_NET_BIND_SERVICE (the advisory's intended exception) and no other capabilities, so the vulnerable condition is absent</span></td></tr>
+        <tr><td class="m">2024-22019</td><td>Node 18 &middot; HTTP/1.1 chunked-ext DoS</td><td><span class="vd miss">plausibly reachable, not executed &mdash; availability only</span></td></tr>
+        <tr><td class="m">2023-46809</td><td>Node 18 &middot; RSA timing (Marvin)</td><td><span class="vd part">applies; exploitability not demonstrated &mdash; no remote privateDecrypt() timing oracle verified</span></td></tr>
+        <tr><td class="m">2024-21892</td><td>Node 18 &middot; Linux-capabilities privesc</td><td><span class="vd part">not reachable &mdash; holds only CAP_NET_BIND_SERVICE (the advisory's intended exception)<br>and no other capabilities, so the vulnerable condition is absent</span></td></tr>
         <tr><td class="m">2024-27982</td><td>Node 18 &middot; HTTP/1.1 request smuggling</td><td><span class="vd part">applies, not reachable &mdash; no front-end proxy</span></td></tr>
         <tr><td class="m">2024-27983</td><td>Node 18 &middot; HTTP/2 DoS <i>(has POC)</i></td><td><span class="vd part">applies, not reachable &mdash; no HTTP/2</span></td></tr>
         <tr><td class="m">2024-22020</td><td>Node 18 &middot; module-import restriction bypass</td><td><span class="vd part">applies, not reachable &mdash; import policy unused</span></td></tr>
@@ -353,20 +361,21 @@ CapEff:  0000000000000400
     <p class="lede">Triage that only ever says &ldquo;false alarm&rdquo; is as useless as a scanner that only says &ldquo;critical.&rdquo; The honest conclusion here is neither.</p>
     <div class="split">
       <div class="att">
-        <div class="att-row"><span class="att-id">What it's not</span><span class="att-name">A pop-a-shell 9.8. No remote RCE primitive exists in the bundle. Of 20 CVEs, nine don't apply to this branch or OS and ten more are unreachable as deployed; one HTTP/1.1 DoS stays plausibly reachable &mdash; availability only.</span></div>
+        <div class="att-row"><span class="att-id">What it's not</span><span class="att-name">A pop-a-shell 9.8. No remotely reachable RCE primitive was identified in this Linux deployment. Of 20 CVEs, nine don't apply to this branch or OS, ten lack a verified reachable path as deployed, and one HTTP/1.1 DoS stays plausibly reachable &mdash; availability only.</span></div>
         <div class="att-row"><span class="att-id">What it is</span><span class="att-name">An internet-facing, unpatched, <b>vendor-pinned</b> runtime. The next Node CVE that <i>is</i> a clean RCE lands on this same exposed surface.</span></div>
         <div class="att-row"><span class="att-id">Real risk</span><span class="att-name">Not &ldquo;exploited today.&rdquo; It's &ldquo;why is a runtime the vendor won't patch answering the whole internet at all.&rdquo;</span></div>
       </div>
       <div class="fix">
         <div class="fix-item"><span class="fix-tag now">Fix</span><p><b>Restrict reach, since you can't patch what's pinned.</b> Source-restrict the dashboard to known-good networks, or bind it to loopback and reach it over a tunnel &mdash; the same control already applied to the C2 admin panel in this lab.</p></div>
         <div class="fix-item"><span class="fix-tag det">Track</span><p>Treat the bundled runtime as a standing exposure with a vendor dependency: re-scan on each release, escalate to the vendor, and hold the compensating control until the pin is lifted.</p></div>
+        <div class="fix-item"><span class="fix-tag det">Status</span><p>At assessment time, access restriction remained pending. Closure requires an external denial check and a successful authorized-path dashboard test.</p></div>
       </div>
     </div>
   </section>
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A CVSS score is a starting point, not a verdict.</b> The 9.8 was real, the component was real, and it faced the internet &mdash; and it still wasn't the emergency the number implied, because validation against the running config eliminated the RCE reading entirely and narrowed twenty CVEs to a single plausibly-reachable availability issue. That gap, in both directions, is the whole job: a scanner reports what it has a plugin for; an analyst determines what's true here. The finding that mattered most in this environment was pinned by a vendor, invisible to one of two scanners, and only understandable after the number stopped being the answer and started being the question.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A CVSS score is a starting point, not a verdict.</b> The scanner's 9.8 result was real, the vulnerable component was real, and its process faced the internet &mdash; and it still wasn't the emergency the number implied, because validation against the running config eliminated the RCE reading entirely and narrowed twenty CVEs to a single plausibly-reachable availability issue. That gap, in both directions, is the whole job: a scanner reports what it has a plugin for; an analyst determines what's true here. The finding that mattered most in this environment was pinned by a vendor, invisible to one of two scanners, and only understandable after the number stopped being the answer and started being the question.</p>
   </section>
 
   <section>
@@ -377,6 +386,8 @@ CapEff:  0000000000000400
       <div class="att-row"><span class="att-id">Node.js</span><span class="att-name">Security releases: <a target="_blank" rel="noopener" href="https://nodejs.org/en/blog/vulnerability/february-2024-security-releases">Feb</a> &middot; <a target="_blank" rel="noopener" href="https://nodejs.org/en/blog/vulnerability/april-2024-security-releases">Apr</a> &middot; <a target="_blank" rel="noopener" href="https://nodejs.org/en/blog/vulnerability/july-2024-security-releases">Jul 2024</a> &middot; <a target="_blank" rel="noopener" href="https://nodejs.org/en/blog/vulnerability/january-2025-security-releases">Jan 2025</a> &middot; <a target="_blank" rel="noopener" href="https://nodejs.org/en/about/previous-releases">release/EOL schedule</a></span></div>
       <div class="att-row"><span class="att-id">Tenable</span><span class="att-name"><a target="_blank" rel="noopener" href="https://www.tenable.com/plugins/nessus/190856">Nessus plugin 190856</a> &mdash; CVSS 9.8, VPR 4.9, version-only detection</span></div>
       <div class="att-row"><span class="att-id">Apache</span><span class="att-name"><a target="_blank" rel="noopener" href="https://logging.apache.org/security.html">Log4j security advisories</a> &mdash; CVE-2026-34477/-34478/-34480 fixed 2.25.4, CVE-2026-49844 fixed 2.25.5</span></div>
+      <div class="att-row"><span class="att-id">Wazuh</span><span class="att-name"><a target="_blank" rel="noopener" href="https://documentation.wazuh.com/current/release-notes/release-4-14-7.html">Wazuh 4.14.7 release notes</a> &mdash; candidate release whose packages were inspected offline</span></div>
+      <div class="att-row"><span class="att-id">Ubuntu</span><span class="att-name"><a target="_blank" rel="noopener" href="https://ubuntu.com/security/CVE-2024-6387">CVE-2024-6387 status</a> &mdash; Ubuntu&nbsp;24.04 fixed package version 1:9.6p1-3ubuntu13.3</span></div>
       <div class="att-row"><span class="att-id">Detail</span><span class="att-name"><a target="_blank" rel="noopener" href="https://nvd.nist.gov/vuln/detail/CVE-2024-21896">NVD CVE-2024-21896</a> (the plugin's 9.8 &mdash; Node 20/21) &middot; <a target="_blank" rel="noopener" href="https://nvd.nist.gov/vuln/detail/CVE-2024-22019">NVD CVE-2024-22019</a> (the reachable HTTP/1.1 DoS)</span></div>
     </div>
   </section>
