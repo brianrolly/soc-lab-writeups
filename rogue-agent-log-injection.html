@@ -420,7 +420,7 @@
     <p class="lede">The preserved export holds <b>35</b> alerts &mdash; every one of them rule <span class="mono">5710</span>, level&nbsp;5, attributed to the rogue agent. Thirty-four are genuine internet brute-force that the agent dutifully forwarded. One is fabricated. That ratio is the point: the forgery did not land in a quiet lab, it landed inside a noisy, production-looking stream of real attacks, indexed under the same trusted identity.</p>
 
     <div class="term">
-      <div class="term-head"><span class="term-host siem">Log Injection Evidence.csv</span><span class="term-what">35 rows &middot; rule 5710 &middot; agent ROGUE-TEST-2</span></div>
+      <div class="term-head"><a class="term-host siem" href="./rogue-agent-event-comparison-sanitized.csv" download style="text-underline-offset:3px">Download sanitized evidence CSV &darr;</a><span class="term-what">35 rows &middot; rule 5710 &middot; agent ROGUE-TEST-2</span></div>
       <pre><span class="out">genuine internet brute-force   <span class="hl-trust">34</span>   17 sessions &times; 2 lines each
 fabricated by the rogue agent   <span class="hl-atk">1</span>   PURPLEINJECT / 203.0.113.66
 
@@ -430,7 +430,9 @@ data.srcport (parsed)      <span class="hl-atk">blank</span>    populated  34/34
 sshd PID companion line    <span class="hl-atk">none</span>     present    17/17</span></pre>
     </div>
 
-    <div class="proves" style="margin-top:16px"><span class="arw">the honest read</span><span>The forgery cleared the important bar &mdash; same decoder, same rule, same severity, same manager-issued agent identity &mdash; but it was <b>not</b> a perfect twin. The CSV proves that much. Whether a more careful forgery removes two of the tells remains a testable hypothesis, not a result of this run.</span></div>
+    <p class="note" style="margin:10px 14px 0">Publication derivative, not the raw export: absolute timestamps, lab addresses, hostnames, usernames and raw log text were removed. Stable aliases and relative timing preserve the row counts, rule and severity, parsing fields, and session pairing used below.</p>
+
+    <div class="proves" style="margin-top:16px"><span class="arw">the honest read</span><span>The forgery cleared the important bar &mdash; same decoder, same rule, same severity, same manager-issued agent identity &mdash; but it was <b>not</b> a perfect twin. The downloadable CSV makes that row-level comparison inspectable. Whether a more careful forgery removes two of the tells remains a testable hypothesis, not a result of this run.</span></div>
 
     <div class="grid" style="margin-top:18px">
       <div class="card">
