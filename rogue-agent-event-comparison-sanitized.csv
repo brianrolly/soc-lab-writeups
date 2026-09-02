@@ -1,36 +1,36 @@
-event_id,capture_offset_seconds,classification,agent_identity,rule_id,rule_level,decoder,source_label,source_address_class,geo_country,parsed_srcport_present,session_label,event_shape
-E01,0.000,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-01,invalid-user
-E02,0.004,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-01,disconnect-preauth
-E03,67.990,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-02,invalid-user
-E04,67.998,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-02,disconnect-preauth
-E05,125.993,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-03,invalid-user
-E06,125.995,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-03,disconnect-preauth
-E07,131.994,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-04,invalid-user
-E08,131.996,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-04,disconnect-preauth
-E09,179.997,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-05,invalid-user
-E10,181.997,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-05,disconnect-preauth
-E11,213.999,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-03,observed-public,Hong Kong,yes,session-06,invalid-user
-E12,214.001,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-03,observed-public,Hong Kong,yes,session-06,disconnect-preauth
-E13,264.002,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-07,invalid-user
-E14,266.002,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-07,disconnect-preauth
-E15,280.005,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-08,invalid-user
-E16,280.009,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-08,disconnect-preauth
-E17,294.004,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-09,invalid-user
-E18,294.006,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-09,disconnect-preauth
-E19,402.010,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-10,invalid-user
-E20,402.012,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-01,observed-public,China,yes,session-10,disconnect-preauth
-E21,406.011,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-11,invalid-user
-E22,406.052,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-11,disconnect-preauth
-E23,436.012,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-05,observed-public,China,yes,session-12,invalid-user
-E24,436.053,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-05,observed-public,China,yes,session-12,disconnect-preauth
-E25,444.013,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-13,invalid-user
-E26,444.015,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-13,disconnect-preauth
-E27,494.016,fabricated-test,manager-issued-test-agent,5710,5,sshd,TEST-NET-3,reserved-documentation,,no,session-14,failed-password
-E28,516.017,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-15,invalid-user
-E29,516.057,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-15,disconnect-preauth
-E30,694.028,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-03,observed-public,Hong Kong,yes,session-16,invalid-user
-E31,696.028,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-03,observed-public,Hong Kong,yes,session-16,disconnect-preauth
-E32,742.031,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-17,invalid-user
-E33,742.072,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-04,observed-public,United States,yes,session-17,disconnect-preauth
-E34,770.032,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-18,invalid-user
-E35,770.073,genuine-internet,manager-issued-test-agent,5710,5,sshd,external-source-02,observed-public,China,yes,session-18,disconnect-preauth
+event_id,capture_offset_seconds,classification,agent_name,rule_id,rule_level,decoder,source_user,source_ip_label,source_address_class,geo_country,parsed_srcport,raw_srcport,session_label,event_shape,full_log_sanitized
+E01,0.000,genuine-internet,ROGUE-TEST-2,5710,5,sshd,fw,external-source-01,observed-public,China,37678,37678,session-01,invalid-user,sensor-host sshd[session-01]: Invalid user fw from external-source-01 port 37678
+E02,0.004,genuine-internet,ROGUE-TEST-2,5710,5,sshd,fw,external-source-01,observed-public,China,37678,37678,session-01,disconnect-preauth,sensor-host sshd[session-01]: Disconnected from invalid user fw external-source-01 port 37678 [preauth]
+E03,67.990,genuine-internet,ROGUE-TEST-2,5710,5,sshd,jinhan,external-source-04,observed-public,United States,50328,50328,session-02,invalid-user,sensor-host sshd[session-02]: Invalid user jinhan from external-source-04 port 50328
+E04,67.998,genuine-internet,ROGUE-TEST-2,5710,5,sshd,jinhan,external-source-04,observed-public,United States,50328,50328,session-02,disconnect-preauth,sensor-host sshd[session-02]: Disconnected from invalid user jinhan external-source-04 port 50328 [preauth]
+E05,125.993,genuine-internet,ROGUE-TEST-2,5710,5,sshd,tunnel,external-source-02,observed-public,China,61614,61614,session-03,invalid-user,sensor-host sshd[session-03]: Invalid user tunnel from external-source-02 port 61614
+E06,125.995,genuine-internet,ROGUE-TEST-2,5710,5,sshd,tunnel,external-source-02,observed-public,China,61614,61614,session-03,disconnect-preauth,sensor-host sshd[session-03]: Disconnected from invalid user tunnel external-source-02 port 61614 [preauth]
+E07,131.994,genuine-internet,ROGUE-TEST-2,5710,5,sshd,code,external-source-01,observed-public,China,59560,59560,session-04,invalid-user,sensor-host sshd[session-04]: Invalid user code from external-source-01 port 59560
+E08,131.996,genuine-internet,ROGUE-TEST-2,5710,5,sshd,code,external-source-01,observed-public,China,59560,59560,session-04,disconnect-preauth,sensor-host sshd[session-04]: Disconnected from invalid user code external-source-01 port 59560 [preauth]
+E09,179.997,genuine-internet,ROGUE-TEST-2,5710,5,sshd,myuser,external-source-04,observed-public,United States,60400,60400,session-05,invalid-user,sensor-host sshd[session-05]: Invalid user myuser from external-source-04 port 60400
+E10,181.997,genuine-internet,ROGUE-TEST-2,5710,5,sshd,myuser,external-source-04,observed-public,United States,60400,60400,session-05,disconnect-preauth,sensor-host sshd[session-05]: Disconnected from invalid user myuser external-source-04 port 60400 [preauth]
+E11,213.999,genuine-internet,ROGUE-TEST-2,5710,5,sshd,portal,external-source-03,observed-public,Hong Kong,38224,38224,session-06,invalid-user,sensor-host sshd[session-06]: Invalid user portal from external-source-03 port 38224
+E12,214.001,genuine-internet,ROGUE-TEST-2,5710,5,sshd,portal,external-source-03,observed-public,Hong Kong,38224,38224,session-06,disconnect-preauth,sensor-host sshd[session-06]: Disconnected from invalid user portal external-source-03 port 38224 [preauth]
+E13,264.002,genuine-internet,ROGUE-TEST-2,5710,5,sshd,safeuser,external-source-01,observed-public,China,48126,48126,session-07,invalid-user,sensor-host sshd[session-07]: Invalid user safeuser from external-source-01 port 48126
+E14,266.002,genuine-internet,ROGUE-TEST-2,5710,5,sshd,safeuser,external-source-01,observed-public,China,48126,48126,session-07,disconnect-preauth,sensor-host sshd[session-07]: Disconnected from invalid user safeuser external-source-01 port 48126 [preauth]
+E15,280.005,genuine-internet,ROGUE-TEST-2,5710,5,sshd,factorio,external-source-02,observed-public,China,33144,33144,session-08,invalid-user,sensor-host sshd[session-08]: Invalid user factorio from external-source-02 port 33144
+E16,280.009,genuine-internet,ROGUE-TEST-2,5710,5,sshd,factorio,external-source-02,observed-public,China,33144,33144,session-08,disconnect-preauth,sensor-host sshd[session-08]: Disconnected from invalid user factorio external-source-02 port 33144 [preauth]
+E17,294.004,genuine-internet,ROGUE-TEST-2,5710,5,sshd,runner,external-source-04,observed-public,United States,54908,54908,session-09,invalid-user,sensor-host sshd[session-09]: Invalid user runner from external-source-04 port 54908
+E18,294.006,genuine-internet,ROGUE-TEST-2,5710,5,sshd,runner,external-source-04,observed-public,United States,54908,54908,session-09,disconnect-preauth,sensor-host sshd[session-09]: Disconnected from invalid user runner external-source-04 port 54908 [preauth]
+E19,402.010,genuine-internet,ROGUE-TEST-2,5710,5,sshd,web,external-source-01,observed-public,China,47430,47430,session-10,invalid-user,sensor-host sshd[session-10]: Invalid user web from external-source-01 port 47430
+E20,402.012,genuine-internet,ROGUE-TEST-2,5710,5,sshd,web,external-source-01,observed-public,China,47430,47430,session-10,disconnect-preauth,sensor-host sshd[session-10]: Disconnected from invalid user web external-source-01 port 47430 [preauth]
+E21,406.011,genuine-internet,ROGUE-TEST-2,5710,5,sshd,teamspeak,external-source-04,observed-public,United States,41966,41966,session-11,invalid-user,sensor-host sshd[session-11]: Invalid user teamspeak from external-source-04 port 41966
+E22,406.052,genuine-internet,ROGUE-TEST-2,5710,5,sshd,teamspeak,external-source-04,observed-public,United States,41966,41966,session-11,disconnect-preauth,sensor-host sshd[session-11]: Disconnected from invalid user teamspeak external-source-04 port 41966 [preauth]
+E23,436.012,genuine-internet,ROGUE-TEST-2,5710,5,sshd,ubuntu,external-source-05,observed-public,China,53058,53058,session-12,invalid-user,sensor-host sshd[session-12]: Invalid user ubuntu from external-source-05 port 53058
+E24,436.053,genuine-internet,ROGUE-TEST-2,5710,5,sshd,ubuntu,external-source-05,observed-public,China,53058,53058,session-12,disconnect-preauth,sensor-host sshd[session-12]: Disconnected from invalid user ubuntu external-source-05 port 53058 [preauth]
+E25,444.013,genuine-internet,ROGUE-TEST-2,5710,5,sshd,test,external-source-02,observed-public,China,55928,55928,session-13,invalid-user,sensor-host sshd[session-13]: Invalid user test from external-source-02 port 55928
+E26,444.015,genuine-internet,ROGUE-TEST-2,5710,5,sshd,test,external-source-02,observed-public,China,55928,55928,session-13,disconnect-preauth,sensor-host sshd[session-13]: Disconnected from invalid user test external-source-02 port 55928 [preauth]
+E27,494.016,fabricated-test,ROGUE-TEST-2,5710,5,sshd,PURPLEINJECT,203.0.113.66,reserved-documentation,,,4444,session-14,failed-password,sensor-host sshd[session-14]: Failed password for invalid user PURPLEINJECT from 203.0.113.66 port 4444 ssh2
+E28,516.017,genuine-internet,ROGUE-TEST-2,5710,5,sshd,ubuntu,external-source-04,observed-public,United States,53524,53524,session-15,invalid-user,sensor-host sshd[session-15]: Invalid user ubuntu from external-source-04 port 53524
+E29,516.057,genuine-internet,ROGUE-TEST-2,5710,5,sshd,ubuntu,external-source-04,observed-public,United States,53524,53524,session-15,disconnect-preauth,sensor-host sshd[session-15]: Disconnected from invalid user ubuntu external-source-04 port 53524 [preauth]
+E30,694.028,genuine-internet,ROGUE-TEST-2,5710,5,sshd,deploy,external-source-03,observed-public,Hong Kong,41304,41304,session-16,invalid-user,sensor-host sshd[session-16]: Invalid user deploy from external-source-03 port 41304
+E31,696.028,genuine-internet,ROGUE-TEST-2,5710,5,sshd,deploy,external-source-03,observed-public,Hong Kong,41304,41304,session-16,disconnect-preauth,sensor-host sshd[session-16]: Disconnected from invalid user deploy external-source-03 port 41304 [preauth]
+E32,742.031,genuine-internet,ROGUE-TEST-2,5710,5,sshd,dmdba,external-source-04,observed-public,United States,55628,55628,session-17,invalid-user,sensor-host sshd[session-17]: Invalid user dmdba from external-source-04 port 55628
+E33,742.072,genuine-internet,ROGUE-TEST-2,5710,5,sshd,dmdba,external-source-04,observed-public,United States,55628,55628,session-17,disconnect-preauth,sensor-host sshd[session-17]: Disconnected from invalid user dmdba external-source-04 port 55628 [preauth]
+E34,770.032,genuine-internet,ROGUE-TEST-2,5710,5,sshd,testssh,external-source-02,observed-public,China,36608,36608,session-18,invalid-user,sensor-host sshd[session-18]: Invalid user testssh from external-source-02 port 36608
+E35,770.073,genuine-internet,ROGUE-TEST-2,5710,5,sshd,testssh,external-source-02,observed-public,China,36608,36608,session-18,disconnect-preauth,sensor-host sshd[session-18]: Disconnected from invalid user testssh external-source-02 port 36608 [preauth]
