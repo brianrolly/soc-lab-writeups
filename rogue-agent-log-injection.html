@@ -156,6 +156,11 @@
   .fix-item p{margin:0; font-size:.93rem}
   .fix-item b{font-weight:600}
 
+  .source-list{display:flex; flex-direction:column; gap:10px; margin-top:16px}
+  .source{font-size:.9rem; color:var(--muted); padding-bottom:10px; border-bottom:1px solid var(--line)}
+  .source:last-child{padding-bottom:0; border-bottom:0}
+  .source a{color:var(--trust-ink); font-weight:600; text-underline-offset:3px}
+
   footer{padding:34px 0 60px; border-top:1px solid var(--line); margin-top:20px}
   .note{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted); line-height:1.7; max-width:70ch}
   .note b{color:var(--muted)}
@@ -174,6 +179,7 @@
       <span class="chip"><b>Target</b> wazuh-m · 198.51.100.10</span>
       <span class="chip"><b>Source</b> caldera-c2 · 198.51.100.20</span>
       <span class="chip"><b>Date</b> 2026-08-20</span>
+      <span class="chip"><b>Scope</b> Wazuh 4.14.5 · authd <span class="mono">use_password: no</span> · TCP/1515 reachable</span>
       <span class="chip ok"><span class="dot"></span>Authorized lab · own infrastructure</span>
     </div>
   </header>
@@ -189,7 +195,7 @@
   <section>
     <p class="kicker">The mechanism</p>
     <h2>Crossing the trust boundary</h2>
-    <p class="lede">The whole exploit turns on one move: an unauthenticated enrollment converts an untrusted attacker host into a <em>trusted</em> agent. Once across that line, everything the attacker writes is believed.</p>
+    <p class="lede">The whole exploit turns on one move: an unauthenticated enrollment converts an untrusted attacker host into a <em>trusted</em> agent. Once across that line, everything the attacker forwards is <em>attributed</em> to a manager-issued, trusted identity. Wazuh still decodes the content and matches it against the same rules &mdash; what it stops asking is whether the <b>source</b> should be believed.</p>
 
     <figure class="flow">
       <div class="flow-scroll">
@@ -260,14 +266,14 @@
           </defs>
         </svg>
       </div>
-      <figcaption><b>The red path is the attack.</b> Enrollment on 1515 hands the attacker a valid key with no password; installing an agent with that key moves the identity across the trust boundary, after which a single <span class="mono">logger</span> line becomes a trusted alert that, read on its own, looks exactly like a real one.</figcaption>
+      <figcaption><b>The red path is the attack.</b> Enrollment on 1515 hands the attacker a valid key with no password; installing an agent with that key moves the identity across the trust boundary, after which a single <span class="mono">logger</span> line becomes an alert with the same decoder, rule, severity and agent attribution as real attacks.</figcaption>
     </figure>
   </section>
 
   <section>
     <p class="kicker">The kill chain</p>
-    <h2>Seven commands, verbatim</h2>
-    <p class="lede">Every command below was run during the exercise; every output is copied from the terminal. Prompts are colored by host — <span class="mono" style="color:var(--attack-ink)">attacker</span> versus <span class="mono" style="color:var(--trust-ink)">SIEM</span>.</p>
+    <h2>Seven stages, from enrollment to indexed alert</h2>
+    <p class="lede">These <b>public-safe excerpts</b> preserve the material commands and results from the exercise; they are not a verbatim transcript. Lab addresses appear as RFC&nbsp;5737 documentation ranges, the issued agent key is redacted, and one long request is abbreviated. Prompts are colored by host — <span class="mono" style="color:var(--attack-ink)">attacker</span> versus <span class="mono" style="color:var(--trust-ink)">SIEM</span>.</p>
 
     <div class="steps">
 
@@ -393,19 +399,81 @@
         <h3>The flaw</h3>
         <p>Wazuh's enrollment service (<code>authd</code>, port 1515) ran with <code>use_password: no</code> and was reachable from a neighboring host.</p>
         <p>Enrollment is meant to be a brief, trusted bootstrap. Left open, it is an <b>anonymous grant of a trusted identity</b>.</p>
+        <p><b>This is not a CVE claim.</b> Nothing here exploits a software defect — <code>authd</code> did exactly what it was configured to do. It is a <b>deployment and trust-boundary failure</b>, in the one component whose value depends entirely on that boundary holding.</p>
       </div>
       <div class="card impact">
         <h3>The impact</h3>
-        <p>Once trusted, the agent controls a telemetry feed. It can <b>forge</b> alerts to bait or exhaust the SOC, or <b>bury</b> real activity under injected noise.</p>
+        <p>Once trusted, the agent controls a telemetry feed. This exercise <b>demonstrated alert forgery</b>. Misdirection, analyst exhaustion and burying real activity under injected noise are plausible follow-on effects, not outcomes measured here.</p>
         <p>This subverts integrity, not just a host — it attacks the thing that is supposed to see every other attack.</p>
       </div>
       <div class="card tell">
-        <h3>The only tell</h3>
-        <p>The forged event used <code>203.0.113.66</code> — an RFC 5737 documentation IP that cannot route. Its blank GeoLocation was the sole giveaway.</p>
-        <p>A real attacker picks a live IP, and the forged alert is then <b>indistinguishable at the record level</b> from the genuine ones beside it — only agent provenance and enrollment history separate them.</p>
+        <h3>The tells</h3>
+        <p>The forged record was <b>not</b> indistinguishable. Three fields separated it from the 34 genuine alerts beside it.</p>
+        <p>Two may be removable by copying a genuine event shape; that was not re-tested. The strongest leads are <b>enrollment provenance and multi-event session correlation</b>.</p>
       </div>
     </div>
   </section>
+
+  <section>
+    <p class="kicker">The evidence</p>
+    <h2>Two populations in one stream</h2>
+    <p class="lede">The preserved export holds <b>35</b> alerts &mdash; every one of them rule <span class="mono">5710</span>, level&nbsp;5, attributed to the rogue agent. Thirty-four are genuine internet brute-force that the agent dutifully forwarded. One is fabricated. That ratio is the point: the forgery did not land in a quiet lab, it landed inside a noisy, production-looking stream of real attacks, indexed under the same trusted identity.</p>
+
+    <div class="term">
+      <div class="term-head"><span class="term-host siem">Log Injection Evidence.csv</span><span class="term-what">35 rows &middot; rule 5710 &middot; agent ROGUE-TEST-2</span></div>
+      <pre><span class="out">genuine internet brute-force   <span class="hl-trust">34</span>   17 sessions &times; 2 lines each
+fabricated by the rogue agent   <span class="hl-atk">1</span>   PURPLEINJECT / 203.0.113.66
+
+field                      forged   genuine
+GeoLocation.country_name   <span class="hl-atk">blank</span>    populated  34/34
+data.srcport (parsed)      <span class="hl-atk">blank</span>    populated  34/34
+sshd PID companion line    <span class="hl-atk">none</span>     present    17/17</span></pre>
+    </div>
+
+    <div class="proves" style="margin-top:16px"><span class="arw">the honest read</span><span>The forgery cleared the important bar &mdash; same decoder, same rule, same severity, same manager-issued agent identity &mdash; but it was <b>not</b> a perfect twin. The CSV proves that much. Whether a more careful forgery removes two of the tells remains a testable hypothesis, not a result of this run.</span></div>
+
+    <div class="grid" style="margin-top:18px">
+      <div class="card">
+        <h3>Tell 1 &mdash; blank country</h3>
+        <p>Populated on all 34 genuine rows, blank on the forgery.</p>
+        <p>The forged source is non-routable TEST-NET-3 space, and this deployment returned no country match for it. Those are observed facts; whether substituting a routable address removes the distinction remains the untested part. <span style="color:var(--muted)">(City is blank on 22 of 34 genuine rows, so city-level gaps prove nothing.)</span></p>
+      </div>
+      <div class="card">
+        <h3>Tell 2 &mdash; unparsed port</h3>
+        <p>Populated on all 34 genuine rows, blank on the forgery &mdash; <span class="mono">4444</span> survives only inside <span class="mono">full_log</span>.</p>
+        <p>In this export, the decoder populated <span class="mono">data.srcport</span> for the genuine <span class="mono">Invalid user &hellip;</span> records but not the forged <span class="mono">Failed password &hellip;</span> record. Copying the genuine phrasing is the obvious next test, not a demonstrated bypass.</p>
+      </div>
+      <div class="card tell">
+        <h3>Strongest here &mdash; session shape</h3>
+        <p>Real sshd traffic is <b>correlated</b>: each of the 17 genuine sessions emitted an <span class="mono">Invalid user</span> line and a <span class="mono">Disconnected &hellip; [preauth]</span> line sharing one PID. The forgery is the only single-event PID in the export.</p>
+        <p>A coherent multi-line forgery may erase that distinction, but that attack was not executed. Provenance &mdash; the newly issued agent identity and its enrollment timeline &mdash; is the more durable control point.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">Act two · anti-forensics</p>
+    <h2>The SIEM saw the join, but not the erase</h2>
+    <p class="lede">The cleanup was deliberately run as a track-covering test (T1070), on the theory that an attacker who owned the SIEM would erase both the foothold and the evidence. <b>At the time of the test, neither action raised an alert.</b></p>
+
+    <div class="split">
+      <div class="card flaw">
+        <h3>F6a &mdash; removal logged, not alerted</h3>
+        <p><span class="mono">manage_agents -r</span> makes <span class="mono">wazuh-authd</span> write <span class="mono">Agent 'NNN' (name) deleted (requested locally)</span> to <span class="mono">ossec.log</span>, which <em>is</em> ingested.</p>
+        <p>But built-in rule <span class="mono">505</span> matches the literal string &ldquo;Agent removed&rdquo; &mdash; not Wazuh's own wording. The event sat in the pipeline unmatched. A rule-language mismatch, not a missing log.</p>
+      </div>
+      <div class="card flaw">
+        <h3>F6b &mdash; bulk deletion is invisible</h3>
+        <p>A single <span class="mono">_delete_by_query</span> removed <b>363</b> records tagged to the rogue agent. OpenSearch security audit was enabled (<span class="mono">audit_rest: true</span>, WRITE not disabled), yet the delete produced <b>no</b> <span class="mono">security-auditlog-*</span> entry and no Wazuh alert.</p>
+        <p><b>Observed gap: confirmed. Root cause: not yet isolated.</b> The exercise notes point to the handling of admin-certificate operations, but a controlled repeat with explicit audit categories and different administrative identities is needed before attributing the absence solely to that mechanism. <b>Unresolved.</b></p>
+      </div>
+    </div>
+
+    <div class="proves" style="margin-top:16px"><span class="arw">scope boundary</span><span>Read this honestly: the deletion was performed with <b>manager-level administrative access</b>, not with the rogue agent's credential. It is a separate scenario &mdash; &ldquo;the attacker already owns the SIEM host or its admin plane&rdquo; &mdash; and <b>not</b> a demonstrated continuation of the anonymous-enrollment chain above. An anonymously enrolled agent could not, on this evidence, erase the index.</span></div>
+
+    <div class="proves" style="margin-top:12px"><span class="arw">takeaway</span><span>The monitor detected the attacker <b>joining</b> but not the attacker <b>erasing</b>. Detection on the monitoring host is only as trustworthy as the host's own records &mdash; which is the argument for append-only, off-box alert storage.</span></div>
+  </section>
+
 
   <section>
     <div class="split">
@@ -417,6 +485,7 @@
           <div class="att-row"><span class="att-id">T1078</span><span class="att-name">Valid Accounts — closest analog: authenticating with it</span></div>
           <div class="att-row"><span class="att-id">T1565.001</span><span class="att-name">Stored Data Manipulation — the forged record (exact)</span></div>
           <div class="att-row"><span class="att-id">T1562</span><span class="att-name">Impair Defenses — poisoning the SIEM</span></div>
+          <div class="att-row"><span class="att-id">T1070</span><span class="att-name">Indicator Removal — separate manager-admin cleanup test</span></div>
         </div>
         <p style="font-family:'IBM Plex Mono',monospace; font-size:.72rem; line-height:1.7; color:var(--muted); margin:15px 0 0">
           <b style="color:var(--ink)">On the identity mappings.</b> T1136 and T1078 are approximate. A Wazuh
@@ -429,8 +498,8 @@
       <div class="card">
         <h3 class="mono" style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px">Response</h3>
         <div class="fix">
-          <div class="fix-item"><span class="fix-tag det">detect</span><p><b>Built &amp; live.</b> Custom rules now alert on enrollment requests and API brute-force; a re-run of this chain fires them.</p></div>
-          <div class="fix-item"><span class="fix-tag now">prevent</span><p><b>The real fix.</b> Set <code style="color:var(--attack-ink)">use_password</code> on authd or close 1515 by default; bind the API to loopback; firewall the SIEM.</p></div>
+          <div class="fix-item"><span class="fix-tag det">detect</span><p><b>Built &amp; live.</b> Enrollment and API brute-force were re-tested as separate behaviors: rule 100361 fired on live enrollment, while built-in 411 fed the 100360 threshold rule and a 600-second <span class="mono">firewall-drop</span>.</p></div>
+          <div class="fix-item"><span class="fix-tag now">prevent</span><p><b>The real fix — done.</b> <code style="color:var(--attack-ink)">use_password: yes</code> + <code style="color:var(--attack-ink)">authd.pass</code> set on authd; the identical enrollment command is now rejected. Still open: bind the API to loopback and firewall the SIEM.</p></div>
           <div class="fix-item"><span class="fix-tag now">harden</span><p>Ship alerts off-box to append-only storage so a compromised SIEM cannot rewrite its own history.</p></div>
         </div>
       </div>
@@ -438,9 +507,54 @@
   </section>
 
   <section>
+    <p class="kicker">Scope · what held</p>
+    <h2>Not everything was open</h2>
+    <p class="lede">A finding is only credible next to what <em>didn't</em> fail. Two controls on the same host worked correctly during the exercise, which is what makes the enrollment gap a specific defect rather than a generally unlocked machine.</p>
+    <div class="split">
+      <div class="card tell">
+        <h3>Positive controls</h3>
+        <p><b>Remote syslog rejected the attack host.</b> Ports 514/5514 restrict <span class="mono">allowed-ips</span> to the OPNsense firewall only; <span class="mono">caldera-c2</span> was refused there.</p>
+        <p><b>The indexer was not reachable from the attack host.</b> Recon found port 9200 closed, and the rogue-agent chain used no direct index access.</p>
+      </div>
+      <div class="card flaw">
+        <h3>Detection needed telemetry first</h3>
+        <p>Before any rule could be written, the pipeline had a hole: <span class="mono">api.log</span> and <span class="mono">ossec.log</span> were <b>not being ingested</b>, so the API 401s and the enrollment lines never reached analysis.</p>
+        <p>Both were added as <span class="mono">localfile</span> sources. The lesson is order of operations — <b>you cannot detect what you are not collecting</b>, and a rule written over a gap is a rule that silently never fires.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Detection engineering</p>
+    <h2>Four rules, three validation levels</h2>
+    <p class="lede">The rule IDs are not interchangeable proof. The exercise produced live attack validation for two behaviors, a configuration-posture rule, and an offline regression test for cleanup visibility.</p>
+    <div class="grid">
+      <div class="card tell">
+        <h3>100360 · live + response</h3>
+        <p>Aggregates five built-in API-authentication failures (rule 411) in 60 seconds from the same source. A live 19-request replay fired the rule and installed the timed network drop.</p>
+      </div>
+      <div class="card tell">
+        <h3>100361 · live</h3>
+        <p>Detects the enrollment request in <span class="mono">ossec.log</span>. It fired during the live re-run of anonymous enrollment.</p>
+      </div>
+      <div class="card">
+        <h3>100362 · posture</h3>
+        <p>Raises severity when <span class="mono">authd</span> announces that no password is required. It detects the vulnerable configuration state, not alert forgery itself.</p>
+      </div>
+      <div class="card">
+        <h3>100363 · logtest</h3>
+        <p>Matches Wazuh's actual agent-deletion wording. It passed <span class="mono">wazuh-logtest</span>; a live removal alert remains a future positive-control test.</p>
+      </div>
+    </div>
+    <div class="proves" style="margin-top:16px"><span class="arw">pipeline first</span><span><span class="mono">api.log</span> and <span class="mono">ossec.log</span> were not initially ingested. Adding both as <span class="mono">localfile</span> sources made the authentication failures, enrollment and removal records available to rules. The API brute-force was a parallel finding discovered during recon; it was <b>not</b> required for rogue-agent enrollment or forged-alert injection.</span></div>
+  </section>
+
+
+  <section>
     <p class="kicker">Remediation · verified</p>
     <h2>Found → detected → fixed → re-tested</h2>
-    <p class="lede">The entry point was closed at the source. Enrollment now requires a shared secret (<span class="mono">use_password: yes</span> + <span class="mono">authd.pass</span>), and a new rule fires on agent removal. The <em>identical</em> command from Step 3 was re-run to confirm the fix holds.</p>
+    <p class="lede">The <em>unauthenticated</em> enrollment path was closed at the source. Port&nbsp;1515 still listens — it has to, for legitimate agents — but enrollment now requires a shared secret (<span class="mono">use_password: yes</span> + <span class="mono">authd.pass</span>). The <em>identical</em> command from Step 3 was re-run to confirm the fix holds.</p>
     <div class="grid">
       <div class="term">
         <div class="term-head"><span class="term-host atk">root@caldera-c2</span><span class="term-what" style="color:var(--term-atk)">before · vulnerable</span></div>
@@ -453,13 +567,75 @@
 <span class="out"><span class="hl-trust">ERROR: Invalid password. Unable to add agent</span>   ← blocked</span></pre>
       </div>
     </div>
-    <div class="proves" style="margin-top:16px"><span class="arw">result</span><span>The unauthenticated foothold is closed, and the same chain now raises alerts at enrollment (rule <span class="mono">100361</span>) and at removal (rule <span class="mono">100363</span>). <b>Detection proved the risk; configuration removed it.</b></span></div>
+    <div class="proves" style="margin-top:16px"><span class="arw">result</span><span>The unauthenticated foothold is closed. The two rules were validated by different means, and the distinction matters: enrollment rule <span class="mono">100361</span> fired during a <b>live re-run</b> of the attack, while removal rule <span class="mono">100363</span> was validated offline with <span class="mono">wazuh-logtest</span> and has not yet been observed firing on a live removal. <b>Detection proved the risk; configuration removed it.</b></span></div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Future risk · not exercised</p>
+    <h2>The next trust boundary is the model context</h2>
+    <p class="lede">This exercise did <b>not</b> attack an LLM, and no model consumed the fabricated event. It did prove the delivery primitive an AI-assisted SOC must defend: an unauthenticated source persisted attacker-chosen natural language inside the trusted alert corpus that a future analyst model or retrieval pipeline could read.</p>
+
+    <div class="term">
+      <div class="term-head"><span class="term-host atk">demonstrated path</span><span class="term-what">proved steps → future boundary</span></div>
+      <pre><span class="out">external host
+  → anonymous enrollment
+  → manager-issued agent identity
+  → attacker-chosen <span class="hl-atk">full_log</span>
+  → rule 5710 alert
+  → stored SIEM record
+  <span class="hl-trust">⇢ future LLM / RAG context</span>   ← not tested here</span></pre>
+    </div>
+
+    <div class="grid" style="margin-top:18px">
+      <div class="card flaw">
+        <h3>Why this becomes injection</h3>
+        <p>If a model is asked to summarize, classify or investigate raw <span class="mono">full_log</span>, an attacker can place text where the system expects evidence. If the model interprets that data as instruction, this becomes <b>indirect prompt injection</b>.</p>
+        <p>Proven here: control of the text and its trusted storage path. Not proven here: model execution, successful instruction following, or downstream action.</p>
+      </div>
+      <div class="card impact">
+        <h3>Impact scales with agency</h3>
+        <p>A read-only copilot could omit an indicator, downgrade a trace, invent a conclusion or distort an incident summary. A tool-enabled agent could additionally recommend or attempt containment, ticketing or remediation actions.</p>
+        <p>The second tier depends on the tools and permissions granted to the model; it is a threat-model result, not a claim about this Wazuh deployment.</p>
+      </div>
+      <div class="card tell">
+        <h3>The validation plan</h3>
+        <p>Test later on a disposable clone with a harmless canary instruction, a read-only model and no operational tools. Compare raw evidence, deterministic-rule output and the model's answer; retain the exact prompt, retrieved context and response.</p>
+        <p>Only after that baseline should the lab evaluate bounded, human-approved actions.</p>
+      </div>
+    </div>
+
+    <div class="proves" style="margin-top:16px"><span class="arw">why it matters now</span><span>OWASP and NIST describe indirect prompt injection as model manipulation delivered through attacker-controlled external or resource content. Recent 2026 preprints go one step closer to this lab: they report that adversarial text embedded in security logs can alter LLM triage, summaries and classifications. Those studies do not prove this specific pipeline is exploitable; they establish that the proposed follow-on test is evidence-backed, current and directly relevant.</span></div>
+
+    <div class="proves" style="margin-top:12px"><span class="arw">design rule</span><span>Treat every log field as untrusted even after the event is authenticated. Preserve provenance, separate instructions from evidence, correlate across independent signals, constrain model tools with least privilege, require human approval for consequential actions, and audit the model's inputs, outputs and tool calls. Formatting and filtering help, but are not a complete boundary by themselves.</span></div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Primary references</p>
+    <h2>Configuration, mappings and emerging research</h2>
+    <div class="card">
+      <div class="source-list">
+        <div class="source"><a href="https://documentation.wazuh.com/current/user-manual/agent/agent-enrollment/index.html">Wazuh — agent enrollment</a> · Enrollment creates the client key and admits the endpoint as an authorized platform member.</div>
+        <div class="source"><a href="https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/auth.html">Wazuh — auth configuration reference</a> · Enrollment port and <span class="mono">use_password</span> behavior. This is current documentation; the exercised version is pinned above.</div>
+        <div class="source"><a href="https://documentation.wazuh.com/current/user-manual/agent/agent-enrollment/security-options/using-password-authentication.html">Wazuh — password-authenticated enrollment</a> · Manager and agent configuration for <span class="mono">authd.pass</span>.</div>
+        <div class="source"><a href="https://datatracker.ietf.org/doc/html/rfc5737">IETF RFC 5737</a> · Reserves <span class="mono">203.0.113.0/24</span> as TEST-NET-3 for documentation, supporting the fabricated-address control.</div>
+        <div class="source"><a href="https://docs.opensearch.org/latest/security/audit-logs/index/">OpenSearch — audit logs</a> · Audit layers, event categories and configuration relevant to the unresolved deletion-visibility test.</div>
+        <div class="source"><a href="https://attack.mitre.org/techniques/T1565/001/">MITRE ATT&amp;CK T1565.001</a> · Stored Data Manipulation, the exact mapping for the forged alert record.</div>
+        <div class="source"><a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/">OWASP LLM01:2025 Prompt Injection</a> · Indirect injection through attacker-influenced external content; impact depends on system context and agency.</div>
+        <div class="source"><a href="https://csrc.nist.gov/glossary/term/indirect_prompt_injection">NIST — indirect prompt injection</a> · Resource-controlled content as the delivery path; see NIST AI 100-2e2025.</div>
+        <div class="source"><a href="https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/dist/v6/ATLAS-2026.05.yaml">MITRE ATLAS AML.T0051.001</a> · Indirect Prompt Injection via a separate data channel ingested by an LLM (ATLAS 2026.05 data).</div>
+        <div class="source"><a href="https://arxiv.org/abs/2605.24421">Pandey and Bhujang — <em>Poisoning the Watchtower</em> (2026 preprint)</a> · Adversarial log content evaluated against LLM-assisted SOC classification and summarization.</div>
+        <div class="source"><a href="https://arxiv.org/abs/2607.24174">Landauer et al. — <em>Just Testing, Move Along</em> (2026 preprint)</a> · Prompt injection against LLM-based system-log interpretation.</div>
+        <div class="source"><a href="https://arxiv.org/abs/2607.14493">Karanjai et al. — <em>Context Contamination in LLM Analysis of Network Security Logs</em> (2026 preprint)</a> · Persistent adversarial log content retrieved into model context.</div>
+      </div>
+    </div>
   </section>
 
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The loop closed end to end</b> — the unauthenticated foothold was proven, detection was built and confirmed against a live re-run, and the entry point was then removed at the source. The architectural lesson is the one that matters: a SIEM that can be silently enrolled into and written to is a monitor you cannot fully trust — and detection alone does not fix that. Configuration and tamper-evident, off-box storage do.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The loop closed end to end</b> — the unauthenticated foothold was proven, its alert-forgery impact was preserved in evidence, detection was built and tested at stated confidence levels, and the anonymous path was then closed at the source. The forward-looking lesson is sharper: a telemetry field can be both an authenticated SIEM record and untrusted model input. Configuration, provenance, correlation, bounded AI authority and tamper-evident off-box storage have to preserve that distinction.</p>
   </section>
 
   <footer>
