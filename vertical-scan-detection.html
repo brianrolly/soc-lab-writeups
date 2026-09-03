@@ -168,7 +168,7 @@
   <header class="mast">
     <p class="eyebrow">Detection Engineering<span class="sep">/</span>Perimeter<span class="sep">/</span>Portfolio</p>
     <h1>Vertical Scan Detection</h1>
-    <p class="thesis">A port-scan detector on an OPNsense perimeter feeding a Wazuh/OpenSearch SIEM — tuned from <b>a week of real traffic</b>, and validated the way detection should be: <b>every claim backed by a query and its raw output</b>, never by assertion.</p>
+    <p class="thesis">A port-scan detector on an OPNsense perimeter feeding a Wazuh/OpenSearch SIEM — tuned from <b>5,459 source-windows at its true 5-minute grain</b> after a seven-day study exposed a granularity mistake, then validated with the commands, queries, and recorded output kept together.</p>
     <div class="meta">
       <span class="chip"><b>Stack</b> OPNsense · Suricata · Wazuh/OpenSearch</span>
       <span class="chip"><b>Threshold</b> ≥30 ports / 5 min</span>
@@ -181,6 +181,7 @@
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
     <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Port scans are the constant background noise of any internet-facing host. The hard part is not seeing them — it is <b>separating a real scan from the ambient hum</b> without burying the analyst in false positives. This is how that line was drawn on an OPNsense + Wazuh stack, and how it was kept honest.</p>
+    <p class="lede" style="margin-top:16px;margin-bottom:0"><b>Scope:</b> the monitor evaluates blocked pf events to the protected VIP set and measures each source's destination-port breadth across that set. Target count remains alert context rather than a gate: requiring exactly one target would have suppressed more than 97% of the high-cardinality scanners observed in the baseline.</p>
   </section>
 
 
@@ -191,7 +192,7 @@
     <div class="grid">
       <div class="card"><h3>Background</h3><p>Ordinary internet scanning peaks at <b>14</b> unique ports per 5-min window (median <b>1</b>).</p></div>
       <div class="card"><h3>Commercial scanner</h3><p>A known internet-wide scanner (Modat) reaches <b>21</b>.</p></div>
-      <div class="card tell"><h3>Threshold 30</h3><p>Sits in <b>empty space</b> above all observed background and above Modat's ceiling, below any <b>aggressive single-source</b> scan. Expected volume from background: <b>~0/day</b>.</p></div>
+      <div class="card tell"><h3>Threshold 30</h3><p>Sits in <b>empty space</b> above ordinary background and Modat's observed ceiling, yet below every aggressive single-source scan observed during validation and live monitoring. Expected background-only alert volume: <b>~0/day</b>.</p></div>
     </div>
     <div class="term" style="margin-top:20px">
       <div class="term-head"><span class="term-host siem">separation check</span><span class="term-what">6h sample &middot; true 5-min granularity</span></div>
@@ -199,14 +200,14 @@
 buckets at &gt;=15 unique ports    117   <span class="hl-atk">all 117 were Modat</span>
 anything else exceeding 14        0</span></pre>
     </div>
-    <p class="lede" style="margin-top:16px">That is the whole argument for 30 in one measurement: across 5,459 source-windows, the <b>only</b> thing above 14 ports was a single identifiable commercial scanner. There is no ordinary background traffic between 15 and 33 to trip over.</p>
+    <p class="lede" style="margin-top:16px">That is the argument for 30 in the corrected sample: ordinary background never exceeded 14 ports; only identified Modat buckets occupied 15–21; and no observation landed between 22 and 29. The sample establishes separation, not a permanent law of internet traffic.</p>
     <p class="lede" style="margin-top:22px">A first attempt used <span class="mono">100</span>, derived from 24-hour data and applied to a 5-minute window — it could never fire. Catching that (it shadow-ran 39h with zero alerts) and correcting it is the point: the threshold is <em>measured</em>, and a wrong one was found by watching it, not by guessing.</p>
   </section>
 
   <section>
     <p class="kicker">The evidence chain</p>
     <h2>The scan, then what the SIEM saw</h2>
-    <p class="lede">Each detection pairs the exact <span class="mono">nmap</span> that generated it with raw output from the indexer. Scans run from an authorized lab host against a monitored VIP.</p>
+    <p class="lede">Each validation case pairs the tested method with recorded indexer output. Exact commands are shown where preserved; the slow mixed-flag sequence is labeled as public-safe pseudocode. All scans ran from an authorized lab host against a monitored VIP.</p>
 
     <div class="steps">
 
@@ -218,9 +219,11 @@ anything else exceeding 14        0</span></pre>
 Not shown: 100 filtered tcp ports (no-response)
 Nmap done: 1 IP address (1 host up) scanned in 3.07 seconds</span></pre></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what the monitor recorded</span></div>
-        <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.20</span>","tcp","S"]   state: COMPLETED
-raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30   crossed: true</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>91 unique ports in one 5-minute window vs a threshold of 30 — fired, with exact attribution.</span></div>
+        <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.20</span>","tcp","S"]
+raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30   crossed: true
+alerts: <span class="hl-trust">1</span>   state: ACTIVE -&gt; COMPLETED   latency: ~1m53s   error: none</span></pre></div>
+        <div class="proves"><span class="arw">proves</span><span>91 unique ports crossed the threshold with exact attribution, and the corrected schedule produced <b>one alert rather than five duplicate evaluations</b>.</span></div>
+        <div class="proves"><span class="arw">limits</span><span>Nmap targeted 100 ports, while pf recorded 171 events covering 91 unique ports. The cause was not isolated; the threshold result is unaffected, but pf event counts should not be treated as an exact measurement of scan size.</span></div>
       </div>
 
       <div class="step">
@@ -234,19 +237,43 @@ raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30
 rule=100347/L10  TCP Xmas scan
 rule=100348/L10  TCP NULL scan
 <span class="hl-atk"># cardinality monitor: 0</span> — the firewall never logs these flags</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>The monitor is blind to flags the firewall drops silently — but Suricata is not. Every flag one layer misses, the other logs. <b>Exactly complementary.</b></span></div>
+        <div class="proves"><span class="arw">proves</span><span>For the six TCP scan families tested at burst rates, at least one deployed layer detected each. That is measured coverage for those cases—not a claim of universal complementarity.</span></div>
+        <div class="flow-scroll" style="padding:0 20px 18px">
+          <table style="width:100%;border-collapse:collapse;font-size:.86rem;min-width:620px">
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
+              <th style="padding:7px 10px 7px 0">Scan</th>
+              <th style="padding:7px 10px">pf logs</th>
+              <th style="padding:7px 10px">Cardinality monitor</th>
+              <th style="padding:7px 0 7px 10px">Suricata scan rule</th>
+            </tr></thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">SYN</td><td style="padding:7px 10px">yes</td><td style="padding:7px 10px"><b>fires at &ge;30</b></td><td style="padding:7px 0 7px 10px">—</td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">FIN</td><td style="padding:7px 10px">no</td><td style="padding:7px 10px">blind</td><td style="padding:7px 0 7px 10px"><b>100346</b></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">Xmas</td><td style="padding:7px 10px">no</td><td style="padding:7px 10px">blind</td><td style="padding:7px 0 7px 10px"><b>100347</b></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">NULL</td><td style="padding:7px 10px">no</td><td style="padding:7px 10px">blind</td><td style="padding:7px 0 7px 10px"><b>100348</b></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">Maimon</td><td style="padding:7px 10px">yes</td><td style="padding:7px 10px"><b>fired</b></td><td style="padding:7px 0 7px 10px">none</td></tr>
+              <tr><td style="padding:7px 10px 7px 0">ACK</td><td style="padding:7px 10px">yes</td><td style="padding:7px 10px"><b>fired</b></td><td style="padding:7px 0 7px 10px">none</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="proves"><span class="arw">limits</span><span>UDP remained untested, and the next test showed that careful pacing can still stay below every elevated layer.</span></div>
       </div>
 
       <div class="step">
         <div class="step-head"><span class="step-num">03</span><h3 class="step-title">Slow, paced scan → the honest gap</h3><span class="host-tag atk">nmap</span></div>
-        <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">one probe per port, spaced</span></div>
-        <pre><span class="cmd">for p in 42001..42008; do
-  nmap -sS -Pn -n --max-retries 0 -p $p 198.51.100.36
+        <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">public-safe pseudocode · 32 ports · 8 per flag family</span></div>
+        <pre><span class="cmd">for i in {0..7}; do
+  nmap -sS -Pn -n --max-retries 0 -p &lt;next-SYN-port&gt;  198.51.100.36
+  nmap -sF -Pn -n --max-retries 0 -p &lt;next-FIN-port&gt;  198.51.100.36
+  nmap -sX -Pn -n --max-retries 0 -p &lt;next-Xmas-port&gt; 198.51.100.36
+  nmap -sN -Pn -n --max-retries 0 -p &lt;next-NULL-port&gt; 198.51.100.36
   sleep 45
 done</span></pre></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what fired</span></div>
-        <pre><span class="out">rules fired: <span class="hl-atk">100340/L6 only</span>   highest level reached: 6</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>Paced under every threshold, a slow scan raises only the level-6 floor — no elevated alert. (A <em>careless</em> slow scan using nmap defaults trips the firewall’s rate rules to L12; the gap only opens for one that suppresses retransmits and paces down.) Documented, not hidden — it defines the long-window monitor to build next.</span></div>
+        <pre><span class="out">100340/L6 floor: <span class="hl-atk">8</span>   pf escalations 100341–100343: 0
+Suricata scan rules 100346–100348: 0   cardinality alerts: 0
+highest level reached: 6</span></pre></div>
+        <div class="proves"><span class="arw">proves</span><span>The corrected 32-port mixed-flag test—eight SYN, FIN, Xmas, and NULL probes—stayed below every elevated threshold. A <em>careless</em> version using nmap's default retransmission reached level 12; the demonstrated gap requires suppressed retries and careful pacing. It defines the long-window monitor to build next.</span></div>
       </div>
 
     </div>
@@ -261,7 +288,7 @@ done</span></pre></div>
       <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
         <th style="padding:9px 12px 9px 0;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Time (UTC)</th>
         <th style="padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Source</th>
-        <th style="padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500;text-align:right">Ports</th>
+        <th style="padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500;text-align:right">Port estimate</th>
         <th style="padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">Target(s)</th>
         <th style="padding:9px 0 9px 12px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500">rDNS</th>
       </tr></thead>
@@ -274,7 +301,8 @@ done</span></pre></div>
       </tbody>
     </table>
     </div>
-    <p class="lede" style="margin-top:20px">Two different numbers, worth keeping apart. The prediction was <b>~0/day from background</b> — that is a false-positive forecast, and it held: <b>zero</b>. The <b>~1/day</b> observed is the arrival rate of <em>genuine</em> scans, which the prediction said nothing about. The smallest real detection is 34 ports; background tops out at 14. The threshold of 30 sits in the empty gap between — which is why the false-positive rate is zero, not merely low.</p>
+    <p class="lede" style="margin-top:20px">Two different numbers, worth keeping apart. The forecast was <b>~0/day from ordinary background</b>; the observed <b>~1/day</b> is the arrival rate of genuine scans, which that forecast did not predict. Among the <b>five production alerts reviewed from August 16–20, 2026</b>, none was analyst-labeled a false positive. The smallest reviewed alert contained 34 estimated ports; ordinary background in the corrected sample topped out at 14.</p>
+    <p class="lede">The port column is an OpenSearch cardinality estimate, not an exact packet count. The monitor's <span class="mono">precision_threshold</span> is 1,000, so the 1,484-port result is sufficient proof of threshold crossing but should not be read as an exact scan size. <a href="https://docs.opensearch.org/latest/aggregations/metric/cardinality/" style="color:var(--trust-ink)">OpenSearch cardinality behavior &rarr;</a></p>
   </section>
 
   <section>
@@ -283,17 +311,17 @@ done</span></pre></div>
     <p class="lede">&ldquo;Zero false positives&rdquo; is only half a result. A threshold is a trade, and this one was bought with two things worth stating plainly.</p>
     <div class="split">
       <div class="card flaw">
-        <h3>It is priced in false negatives</h3>
-        <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That is a deliberate choice to <em>not</em> alert on a known, real, commercial scanner &mdash; one measured at <b>63,820 ports in 24 hours</b> across 79 addresses.</p>
-        <p>Per-source cardinality cannot catch it: each address paces at ~20 ports per 5-minute window and never crosses the line. The zero-FP rate and that blind spot are <b>the same decision</b>, described from two sides. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
+        <h3>It is priced in reduced recall</h3>
+        <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That deliberately excludes a known, real, distributed scanner &mdash; one measured at <b>63,820 ports in 24 hours</b> across 79 source addresses.</p>
+        <p>Per-source, five-minute cardinality does not alert on that behavior because every observed source-window stays below the line. The clean alert rate and this blind spot are the <b>precision–recall tradeoff</b> described from two sides. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
       </div>
       <div class="card flaw">
         <h3>&ldquo;Live&rdquo; means dashboard-only</h3>
-        <p>The monitor runs with <span class="mono">actions: []</span> &mdash; enabled, evaluating, and recording every alert to the OpenSearch Alerting dashboard, but pushing <b>no notification anywhere</b>. It is the production detector of record; it is not yet paging anyone.</p>
+        <p>The monitor runs with <span class="mono">actions: []</span> &mdash; enabled, evaluating, and recording every alert to the OpenSearch Alerting dashboard, but pushing <b>no notification anywhere</b>. It is the enabled lab detector; it is not yet paging anyone.</p>
         <p>Bucket-level alerts also auto-resolve to <span class="mono">COMPLETED</span> once the window passes, so a scan at 03:00 leaves a <em>closed</em> alert rather than something demanding attention at 09:00. Wiring a notification channel that preserves history is the next requirement, not a nice-to-have.</p>
       </div>
     </div>
-    <div class="proves" style="margin-top:16px"><span class="arw">why say it</span><span>A detector that fires correctly and tells no one is a measurement, not a control. Reporting the rule as &ldquo;live&rdquo; without that qualifier is how coverage gets overstated on a dashboard &mdash; so it is stated here instead.</span></div>
+    <div class="proves" style="margin-top:16px"><span class="arw">why say it</span><span>A detector that records correctly but does not route an actionable notification is not yet an end-to-end operational alerting control. Reporting it as &ldquo;live&rdquo; without that qualifier would overstate the workflow.</span></div>
   </section>
 
 
@@ -301,21 +329,21 @@ done</span></pre></div>
     <p class="kicker">What it demonstrates</p>
     <h2>The method, not just the result</h2>
     <div class="grid">
-      <div class="card"><h3>Measurement-driven</h3><p>The threshold came from a week of production data; a wrong value was caught by observing it never fired.</p></div>
-      <div class="card"><h3>Validation over assertion</h3><p>Every claim reproduces from a query and its raw output — alert doc, events, individual packets.</p></div>
+      <div class="card"><h3>Measurement-driven</h3><p>A seven-day study exposed the grain error; the replacement threshold came from 5,459 source-windows measured at the true five-minute grain.</p></div>
+      <div class="card"><h3>Validation over assertion</h3><p>Commands, queries, alert documents, and recorded results are kept together, with uncertainty identified where the cause was not isolated.</p></div>
       <div class="card"><h3>Adversarial testing</h3><p>Tested for evasion — mixed flags, stealth flags, slow pacing — each traced to which layer caught it.</p></div>
-      <div class="card tell"><h3>Honest gaps</h3><p>The one real evasion path is documented with evidence and turned into a concrete next requirement.</p></div>
+      <div class="card tell"><h3>Honest gaps</h3><p>Slow pacing and distributed-source evasion are documented with evidence and turned into concrete next requirements.</p></div>
     </div>
   </section>
 
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the background, and has its blind spots written down</b> rather than hidden. It has run as the production detector of record with zero false positives — recording to a dashboard, not yet paging anyone — and every gap it carries is a documented next step rather than a surprise waiting for an incident. The threshold is measured, the one evasion path is reproduced, and the cost of the clean false-positive rate is stated in the same breath as the rate itself.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the measured ordinary background, and has its blind spots written down</b> rather than hidden. Across five reviewed production alerts it produced zero analyst-labeled false positives — recording to a dashboard, not yet paging anyone. The threshold is measured, slow and distributed evasion are bounded, and the cost of the clean alert rate is stated alongside the rate itself.</p>
   </section>
 
   <footer>
-    <p class="note"><b>Authorized lab.</b> Built and tested by the lab owner on their own infrastructure. Lab IPs shown as RFC 5737 documentation addresses; external scanner IPs are genuine observed traffic. Maps to MITRE ATT&CK T1046 — Network Service Discovery.</p>
+    <p class="note"><b>Authorized lab.</b> Built and tested by the lab owner on their own infrastructure. Lab IPs shown as RFC 5737 documentation addresses; external scanner IPs are genuine observed traffic. Public-internet observations map to MITRE ATT&amp;CK T1595.001 — Scanning IP Blocks; the controlled internal emulation maps to T1046 — Network Service Discovery.</p>
   </footer>
 </div>
 </body>

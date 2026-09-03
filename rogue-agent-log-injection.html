@@ -191,6 +191,30 @@
     <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">The lab is a full home SOC — an OPNsense perimeter, Suricata IDS, and a Wazuh/OpenSearch SIEM watching two Linux hosts. The SIEM is the component meant to see every other attack. This authorized purple-team exercise asks the harder question: <b>what happens when the attacker turns on the SIEM itself?</b></p>
   </section>
 
+  <section>
+    <p class="kicker">60-second case summary</p>
+    <h2>The finding in four moves</h2>
+    <div class="split">
+      <div class="card flaw">
+        <h3>Entry</h3>
+        <p>TCP/1515 was reachable and <code>use_password: no</code>. The manager issued a <b>valid agent key on demand</b> to an anonymous host; no credential was stolen.</p>
+      </div>
+      <div class="card impact">
+        <h3>Impact</h3>
+        <p>The rogue endpoint became a trusted agent and inserted an attacker-authored SSH event that Wazuh indexed as rule 5710 beside <b>34 genuine brute-force alerts</b>.</p>
+      </div>
+      <div class="card tell">
+        <h3>Response</h3>
+        <p>Missing manager-log inputs were added, enrollment and API-abuse detections were built, and password-protected enrollment was enabled. Repeating the original enrollment command was then rejected.</p>
+      </div>
+      <div class="card">
+        <h3>Boundary</h3>
+        <p>This was a configuration-driven trust failure, <b>not a CVE or direct index compromise</b>. It proved attacker-controlled text could enter trusted telemetry; no LLM consumed it, and prompt injection remains a future test.</p>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:16px;margin-bottom:0"><b>Bottom line:</b> The attack forged one believable alert, the evidence exposed detectable inconsistencies, the unauthenticated entry path was closed, and separate deletion-visibility gaps remain documented below.</p>
+  </section>
+
 
   <section>
     <p class="kicker">The mechanism</p>
