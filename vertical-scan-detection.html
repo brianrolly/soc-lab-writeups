@@ -172,7 +172,7 @@
     <div class="meta">
       <span class="chip"><b>Stack</b> OPNsense · Suricata · Wazuh/OpenSearch</span>
       <span class="chip"><b>Threshold</b> ≥30 ports / 5 min</span>
-      <span class="chip ok"><span class="dot"></span>Live · 0 false positives</span>
+      <span class="chip ok"><span class="dot"></span>Live · dashboard-only · 0 false positives</span>
     </div>
   </header>
 
@@ -191,8 +191,15 @@
     <div class="grid">
       <div class="card"><h3>Background</h3><p>Ordinary internet scanning peaks at <b>14</b> unique ports per 5-min window (median <b>1</b>).</p></div>
       <div class="card"><h3>Commercial scanner</h3><p>A known internet-wide scanner (Modat) reaches <b>21</b>.</p></div>
-      <div class="card tell"><h3>Threshold 30</h3><p>Sits in <b>empty space</b> above all observed background, below any real scan. Expected volume: <b>~0/day</b>.</p></div>
+      <div class="card tell"><h3>Threshold 30</h3><p>Sits in <b>empty space</b> above all observed background and above Modat's ceiling, below any <b>aggressive single-source</b> scan. Expected volume from background: <b>~0/day</b>.</p></div>
     </div>
+    <div class="term" style="margin-top:20px">
+      <div class="term-head"><span class="term-host siem">separation check</span><span class="term-what">6h sample &middot; true 5-min granularity</span></div>
+      <pre><span class="out">source-windows sampled        5,459
+buckets at &gt;=15 unique ports    117   <span class="hl-atk">all 117 were Modat</span>
+anything else exceeding 14        0</span></pre>
+    </div>
+    <p class="lede" style="margin-top:16px">That is the whole argument for 30 in one measurement: across 5,459 source-windows, the <b>only</b> thing above 14 ports was a single identifiable commercial scanner. There is no ordinary background traffic between 15 and 33 to trip over.</p>
     <p class="lede" style="margin-top:22px">A first attempt used <span class="mono">100</span>, derived from 24-hour data and applied to a 5-minute window — it could never fire. Catching that (it shadow-ran 39h with zero alerts) and correcting it is the point: the threshold is <em>measured</em>, and a wrong one was found by watching it, not by guessing.</p>
   </section>
 
@@ -267,8 +274,28 @@ done</span></pre></div>
       </tbody>
     </table>
     </div>
-    <p class="lede" style="margin-top:20px">Observed rate <b>~1/day</b>, matching the prediction, with <b>zero false positives</b>. The smallest real detection is 34 ports; background tops out at 14. The threshold of 30 sits in the empty gap between — which is why the false-positive rate is zero, not merely low.</p>
+    <p class="lede" style="margin-top:20px">Two different numbers, worth keeping apart. The prediction was <b>~0/day from background</b> — that is a false-positive forecast, and it held: <b>zero</b>. The <b>~1/day</b> observed is the arrival rate of <em>genuine</em> scans, which the prediction said nothing about. The smallest real detection is 34 ports; background tops out at 14. The threshold of 30 sits in the empty gap between — which is why the false-positive rate is zero, not merely low.</p>
   </section>
+
+  <section>
+    <p class="kicker">The cost of zero</p>
+    <h2>What a clean false-positive rate buys, and what it spends</h2>
+    <p class="lede">&ldquo;Zero false positives&rdquo; is only half a result. A threshold is a trade, and this one was bought with two things worth stating plainly.</p>
+    <div class="split">
+      <div class="card flaw">
+        <h3>It is priced in false negatives</h3>
+        <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That is a deliberate choice to <em>not</em> alert on a known, real, commercial scanner &mdash; one measured at <b>63,820 ports in 24 hours</b> across 79 addresses.</p>
+        <p>Per-source cardinality cannot catch it: each address paces at ~20 ports per 5-minute window and never crosses the line. The zero-FP rate and that blind spot are <b>the same decision</b>, described from two sides. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
+      </div>
+      <div class="card flaw">
+        <h3>&ldquo;Live&rdquo; means dashboard-only</h3>
+        <p>The monitor runs with <span class="mono">actions: []</span> &mdash; enabled, evaluating, and recording every alert to the OpenSearch Alerting dashboard, but pushing <b>no notification anywhere</b>. It is the production detector of record; it is not yet paging anyone.</p>
+        <p>Bucket-level alerts also auto-resolve to <span class="mono">COMPLETED</span> once the window passes, so a scan at 03:00 leaves a <em>closed</em> alert rather than something demanding attention at 09:00. Wiring a notification channel that preserves history is the next requirement, not a nice-to-have.</p>
+      </div>
+    </div>
+    <div class="proves" style="margin-top:16px"><span class="arw">why say it</span><span>A detector that fires correctly and tells no one is a measurement, not a control. Reporting the rule as &ldquo;live&rdquo; without that qualifier is how coverage gets overstated on a dashboard &mdash; so it is stated here instead.</span></div>
+  </section>
+
 
   <section>
     <p class="kicker">What it demonstrates</p>
@@ -284,7 +311,7 @@ done</span></pre></div>
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the background, and has its blind spots written down</b> rather than hidden. It has run in production with zero false positives, and every gap it carries is a documented next step — not a surprise waiting for an incident.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the background, and has its blind spots written down</b> rather than hidden. It has run as the production detector of record with zero false positives — recording to a dashboard, not yet paging anyone — and every gap it carries is a documented next step rather than a surprise waiting for an incident. The threshold is measured, the one evasion path is reproduced, and the cost of the clean false-positive rate is stated in the same breath as the rate itself.</p>
   </section>
 
   <footer>
