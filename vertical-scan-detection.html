@@ -207,7 +207,7 @@ anything else exceeding 14        0</span></pre>
   <section>
     <p class="kicker">The evidence chain</p>
     <h2>The scan, then what the SIEM saw</h2>
-    <p class="lede">Each validation case pairs the tested method with recorded indexer output. Exact commands are shown where preserved; the slow mixed-flag sequence is labeled as public-safe pseudocode. All scans ran from an authorized lab host against a monitored VIP.</p>
+    <p class="lede">Each validation case pairs the tested method with recorded indexer output. Exact commands are shown where preserved; the slow mixed-flag sequence is labeled as public-safe pseudocode. All scans ran from an authorized test host against a monitored VIP.</p>
 
     <div class="steps">
 
@@ -284,7 +284,7 @@ highest level reached: 6</span></pre></div>
   <section>
     <p class="kicker">Production results</p>
     <h2>Real unsolicited detections</h2>
-    <p class="lede">After going live, caught from the public internet — no lab traffic. Source IPs are the genuine external scanners observed; the lab VIPs are documentation addresses.</p>
+    <p class="lede">After going live, caught from the public internet — no test traffic. Source IPs are the genuine external scanners observed; the monitored VIPs are documentation addresses.</p>
     <div class="flow-scroll">
     <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:620px">
       <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
@@ -319,7 +319,7 @@ highest level reached: 6</span></pre></div>
       </div>
       <div class="card flaw">
         <h3>&ldquo;Live&rdquo; means dashboard-only</h3>
-        <p>The monitor runs with <span class="mono">actions: []</span> &mdash; enabled, evaluating, and recording every alert to the OpenSearch Alerting dashboard, but pushing <b>no notification anywhere</b>. It is the enabled lab detector; it is not yet paging anyone.</p>
+        <p>The monitor runs with <span class="mono">actions: []</span> &mdash; enabled, evaluating, and recording every alert to the OpenSearch Alerting dashboard, but pushing <b>no notification anywhere</b>. It detects and records; it is not yet paging anyone.</p>
         <p>Bucket-level alerts also auto-resolve to <span class="mono">COMPLETED</span> once the window passes, so a scan at 03:00 leaves a <em>closed</em> alert rather than something demanding attention at 09:00. Wiring a notification channel that preserves history is the next requirement, not a nice-to-have.</p>
       </div>
     </div>
@@ -330,7 +330,7 @@ highest level reached: 6</span></pre></div>
   <section>
     <p class="kicker">Reproducibility</p>
     <h2>The monitor itself</h2>
-    <p class="lede">Everything above rests on one OpenSearch Alerting monitor. It is published here in full, sanitized only for lab addresses, so the thresholds and aggregations can be read rather than taken on trust.</p>
+    <p class="lede">Everything above rests on one OpenSearch Alerting monitor. It is published here in full, sanitized only for internal addresses and the monitor name, so the thresholds and aggregations can be read rather than taken on trust.</p>
     <div class="term">
       <div class="term-head"><span class="term-host siem">vertical-scan-monitor-sanitized.json</span><span class="term-what">the parts that decide</span></div>
       <pre><span class="out">schedule      every 5 MINUTES
@@ -363,7 +363,7 @@ actions       []                               &larr; records, notifies nobody</
   </section>
 
   <footer>
-    <p class="note"><b>Authorized lab.</b> Built and tested by the lab owner on their own infrastructure. Lab IPs shown as RFC 5737 documentation addresses; external scanner IPs are genuine observed traffic. Public-internet observations map to MITRE ATT&amp;CK T1595.001 — Scanning IP Blocks; the controlled internal emulation maps to T1046 — Network Service Discovery.</p>
+    <p class="note"><b>Authorized client work.</b> Built and tested on in-scope client infrastructure. Client identity withheld; internal IPs shown as RFC 5737 documentation addresses; external scanner IPs are genuine observed traffic. Public-internet observations map to MITRE ATT&amp;CK T1595.001 — Scanning IP Blocks; the controlled internal emulation maps to T1046 — Network Service Discovery.</p>
   </footer>
 </div>
 </body>

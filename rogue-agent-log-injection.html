@@ -180,7 +180,7 @@
       <span class="chip"><b>Source</b> caldera-c2 · 198.51.100.20</span>
       <span class="chip"><b>Date</b> 2026-08-20</span>
       <span class="chip"><b>Scope</b> Wazuh 4.14.5 · authd <span class="mono">use_password: no</span> · TCP/1515 reachable</span>
-      <span class="chip ok"><span class="dot"></span>Authorized lab · own infrastructure</span>
+      <span class="chip ok"><span class="dot"></span>Authorized client work · in-scope systems</span>
     </div>
   </header>
 
@@ -188,7 +188,7 @@
 
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">The lab is a full home SOC — an OPNsense perimeter, Suricata IDS, and a Wazuh/OpenSearch SIEM watching two Linux hosts. The SIEM is the component meant to see every other attack. This authorized purple-team exercise asks the harder question: <b>what happens when the attacker turns on the SIEM itself?</b></p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">The client environment is a full SOC stack — an OPNsense perimeter, Suricata IDS, and a Wazuh/OpenSearch SIEM watching two Linux hosts. The SIEM is the component meant to see every other attack. This authorized purple-team exercise asks the harder question: <b>what happens when the attacker turns on the SIEM itself?</b></p>
   </section>
 
   <section>
@@ -297,7 +297,7 @@
   <section>
     <p class="kicker">The kill chain</p>
     <h2>Seven stages, from enrollment to indexed alert</h2>
-    <p class="lede">These <b>public-safe excerpts</b> preserve the material commands and results from the exercise; they are not a verbatim transcript. Lab addresses appear as RFC&nbsp;5737 documentation ranges, the issued agent key is redacted, and one long request is abbreviated. Prompts are colored by host — <span class="mono" style="color:var(--attack-ink)">attacker</span> versus <span class="mono" style="color:var(--trust-ink)">SIEM</span>.</p>
+    <p class="lede">These <b>public-safe excerpts</b> preserve the material commands and results from the exercise; they are not a verbatim transcript. Internal addresses appear as RFC&nbsp;5737 documentation ranges, the issued agent key is redacted, and one long request is abbreviated. Prompts are colored by host — <span class="mono" style="color:var(--attack-ink)">attacker</span> versus <span class="mono" style="color:var(--trust-ink)">SIEM</span>.</p>
 
     <div class="steps">
 
@@ -441,7 +441,7 @@
   <section>
     <p class="kicker">The evidence</p>
     <h2>Two populations in one stream</h2>
-    <p class="lede">The preserved export holds <b>35</b> alerts &mdash; every one of them rule <span class="mono">5710</span>, level&nbsp;5, attributed to the rogue agent. Thirty-four are genuine internet brute-force that the agent dutifully forwarded. One is fabricated. That ratio is the point: the forgery did not land in a quiet lab, it landed inside a noisy, production-looking stream of real attacks, indexed under the same trusted identity.</p>
+    <p class="lede">The preserved export holds <b>35</b> alerts &mdash; every one of them rule <span class="mono">5710</span>, level&nbsp;5, attributed to the rogue agent. Thirty-four are genuine internet brute-force that the agent dutifully forwarded. One is fabricated. That ratio is the point: the forgery did not land in a quiet sandbox, it landed inside a noisy, production-looking stream of real attacks, indexed under the same trusted identity.</p>
 
     <div class="term">
       <div class="term-head"><a class="term-host siem" href="./rogue-agent-event-comparison-sanitized.csv" download style="text-underline-offset:3px">Download sanitized evidence CSV &darr;</a><span class="term-what">35 rows &middot; rule 5710 &middot; agent ROGUE-TEST-2</span></div>
@@ -454,7 +454,7 @@ data.srcport (parsed)      <span class="hl-atk">blank</span>    populated  34/34
 sshd PID companion line    <span class="hl-atk">none</span>     present    17/17</span></pre>
     </div>
 
-    <p class="note" style="margin:10px 14px 0">Publication derivative, not the raw export: absolute timestamps, lab addresses, hostnames, real internet source IPs and process IDs were removed or aliased. The exercise markers <span class="mono">PURPLEINJECT</span>, <span class="mono">203.0.113.66</span> and raw port <span class="mono">4444</span> remain, alongside attempted usernames, sanitized log text, parsed fields and stable session aliases.</p>
+    <p class="note" style="margin:10px 14px 0">Publication derivative, not the raw export: absolute timestamps, internal addresses, hostnames, real internet source IPs and process IDs were removed or aliased. The exercise markers <span class="mono">PURPLEINJECT</span>, <span class="mono">203.0.113.66</span> and raw port <span class="mono">4444</span> remain, alongside attempted usernames, sanitized log text, parsed fields and stable session aliases.</p>
 
     <div class="proves" style="margin-top:16px"><span class="arw">the honest read</span><span>The forgery cleared the important bar &mdash; same decoder, same rule, same severity, same manager-issued agent identity &mdash; but it was <b>not</b> a perfect twin. The downloadable CSV makes that row-level comparison inspectable. Whether a more careful forgery removes two of the tells remains a testable hypothesis, not a result of this run.</span></div>
 
@@ -627,11 +627,11 @@ sshd PID companion line    <span class="hl-atk">none</span>     present    17/17
       <div class="card tell">
         <h3>The validation plan</h3>
         <p>Test later on a disposable clone with a harmless canary instruction, a read-only model and no operational tools. Compare raw evidence, deterministic-rule output and the model's answer; retain the exact prompt, retrieved context and response.</p>
-        <p>Only after that baseline should the lab evaluate bounded, human-approved actions.</p>
+        <p>Only after that baseline should testing extend to bounded, human-approved actions.</p>
       </div>
     </div>
 
-    <div class="proves" style="margin-top:16px"><span class="arw">why it matters now</span><span>OWASP and NIST describe indirect prompt injection as model manipulation delivered through attacker-controlled external or resource content. Recent 2026 preprints go one step closer to this lab: they report that adversarial text embedded in security logs can alter LLM triage, summaries and classifications. Those studies do not prove this specific pipeline is exploitable; they establish that the proposed follow-on test is evidence-backed, current and directly relevant.</span></div>
+    <div class="proves" style="margin-top:16px"><span class="arw">why it matters now</span><span>OWASP and NIST describe indirect prompt injection as model manipulation delivered through attacker-controlled external or resource content. Recent 2026 preprints go one step closer to this exercise: they report that adversarial text embedded in security logs can alter LLM triage, summaries and classifications. Those studies do not prove this specific pipeline is exploitable; they establish that the proposed follow-on test is evidence-backed, current and directly relevant.</span></div>
 
     <div class="proves" style="margin-top:12px"><span class="arw">design rule</span><span>Treat every log field as untrusted even after the event is authenticated. Preserve provenance, separate instructions from evidence, correlate across independent signals, constrain model tools with least privilege, require human approval for consequential actions, and audit the model's inputs, outputs and tool calls. Formatting and filtering help, but are not a complete boundary by themselves.</span></div>
   </section>
@@ -665,7 +665,7 @@ sshd PID companion line    <span class="hl-atk">none</span>     present    17/17
   </section>
 
   <footer>
-    <p class="note"><b>Authorized exercise.</b> Every action was performed by the lab owner against their own infrastructure, in an isolated home-lab SIEM, to validate detection and drive remediation. No third-party systems were involved. The single forged record has been purged from the index; the evidence export is retained. This document is a defensive purple-team artifact.</p>
+    <p class="note"><b>Authorized exercise.</b> Every action was performed within the agreed scope of a client engagement, to validate detection and drive remediation. No systems outside that scope were involved. Client identity withheld. The single forged record has been purged from the index; the evidence export is retained. This document is a defensive purple-team artifact.</p>
   </footer>
 
 </div>

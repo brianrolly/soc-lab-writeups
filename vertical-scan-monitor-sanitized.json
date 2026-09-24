@@ -1,6 +1,6 @@
 {
   "type": "monitor",
-  "name": "SOC-Lab OPNsense protocol-aware vertical scan - 30 unique ports in 5 minutes",
+  "name": "OPNsense protocol-aware vertical scan - 30 unique ports in 5 minutes",
   "monitor_type": "bucket_level_monitor",
   "enabled": true,
   "schedule": {

@@ -200,7 +200,7 @@
   <header class="mast">
     <p class="eyebrow">Vulnerability Validation<span class="sep">/</span>Triage<span class="sep">/</span>Portfolio</p>
     <h1>What a 9.8 Actually Means</h1>
-    <p class="thesis">A credentialed scan of my own SIEM returned a <b>CVSS 9.8 Critical</b>. The number says <i>drop everything</i>. The work says something more precise &mdash; and doing that work is the difference between an analyst and a scanner.</p>
+    <p class="thesis">A credentialed scan of a client's SIEM returned a <b>CVSS 9.8 Critical</b>. The number says <i>drop everything</i>. The work says something more precise &mdash; and doing that work is the difference between an analyst and a scanner.</p>
     <div class="meta">
       <span class="chip"><b>Finding</b> CVSS 9.8 &middot; bundled Node.js</span>
       <span class="chip"><b>Method</b> credentialed Nessus + OpenVAS</span>
@@ -366,7 +366,7 @@ CapEff:  0000000000000400
         <div class="att-row"><span class="att-id">Real risk</span><span class="att-name">Not &ldquo;exploited today.&rdquo; It's &ldquo;why is a runtime the vendor won't patch answering the whole internet at all.&rdquo;</span></div>
       </div>
       <div class="fix">
-        <div class="fix-item"><span class="fix-tag now">Fix</span><p><b>Restrict reach, since you can't patch what's pinned.</b> Source-restrict the dashboard to known-good networks, or bind it to loopback and reach it over a tunnel &mdash; the same control already applied to the C2 admin panel in this lab.</p></div>
+        <div class="fix-item"><span class="fix-tag now">Fix</span><p><b>Restrict reach, since you can't patch what's pinned.</b> Source-restrict the dashboard to known-good networks, or bind it to loopback and reach it over a tunnel &mdash; the same control already applied to the C2 admin panel in this environment.</p></div>
         <div class="fix-item"><span class="fix-tag det">Track</span><p>Treat the bundled runtime as a standing exposure with a vendor dependency: re-scan on each release, escalate to the vendor, and hold the compensating control until the pin is lifted.</p></div>
         <div class="fix-item"><span class="fix-tag det">Status</span><p>At assessment time, access restriction remained pending. Closure requires an external denial check and a successful authorized-path dashboard test.</p></div>
       </div>
@@ -392,7 +392,7 @@ CapEff:  0000000000000400
     </div>
   </section>
 
-  <footer><p class="note"><b>Authorized lab.</b> Credentialed vulnerability scanning of the author's own single-node Wazuh SIEM, with the operator's own service account. All exploitation analysis is assessment only &mdash; no exploit was run against production. Lab addresses shown as RFC&nbsp;5737 documentation ranges; component paths and CVE identifiers are public. Components: Node.js 18.19.0 (end-of-life 2025-03-27; CVE-2023-46809, CVE-2024-21890/-21891/-21892/-21896/-22017/-22019 and later 2024/2025 bundles); Apache log4j-core 2.25.3 (CVE-2026-34477/-34478/-34480/-49844). Branch applicability per the Node.js security-release advisories; scanner plugin 190856 is CVSS 9.8 / VPR 4.9, version-only.</p></footer>
+  <footer><p class="note"><b>Authorized client work.</b> Credentialed vulnerability scanning of a client's single-node Wazuh SIEM, using an authorized service account. All exploitation analysis is assessment only &mdash; no exploit was run against production. Client identity withheld; internal addresses shown as RFC&nbsp;5737 documentation ranges; component paths and CVE identifiers are public. Components: Node.js 18.19.0 (end-of-life 2025-03-27; CVE-2023-46809, CVE-2024-21890/-21891/-21892/-21896/-22017/-22019 and later 2024/2025 bundles); Apache log4j-core 2.25.3 (CVE-2026-34477/-34478/-34480/-49844). Branch applicability per the Node.js security-release advisories; scanner plugin 190856 is CVSS 9.8 / VPR 4.9, version-only.</p></footer>
 </div>
 </body>
 </html>

@@ -1,6 +1,6 @@
-# SOC-Lab Writeups
+# SOC Writeups
 
-Detection engineering and purple-team writeups covering OPNsense, Suricata IDS, and a Wazuh/OpenSearch SIEM. Each writeup backs its claims with the queries and raw output behind them.
+Detection engineering and purple-team writeups from authorized client engagements, covering OPNsense, Suricata IDS, and a Wazuh/OpenSearch SIEM. Each writeup backs its claims with the queries and raw output behind them.
 
 **Read them on the live site: [brianrolly.github.io/soc-lab-writeups](https://brianrolly.github.io/soc-lab-writeups/)**
 
