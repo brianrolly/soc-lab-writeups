@@ -1,0 +1,136 @@
+{
+  "type": "monitor",
+  "name": "SOC-Lab OPNsense protocol-aware vertical scan - 30 unique ports in 5 minutes",
+  "monitor_type": "bucket_level_monitor",
+  "enabled": true,
+  "schedule": {
+    "period": {
+      "interval": 5,
+      "unit": "MINUTES"
+    }
+  },
+  "inputs": [
+    {
+      "search": {
+        "indices": [
+          "wazuh-alerts-*"
+        ],
+        "query": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "filter": [
+                {
+                  "term": {
+                    "decoder.name": "pf"
+                  }
+                },
+                {
+                  "term": {
+                    "data.action": "block"
+                  }
+                },
+                {
+                  "terms": {
+                    "data.dstip": [
+                      "198.51.100.36",
+                      "198.51.100.37"
+                    ]
+                  }
+                },
+                {
+                  "exists": {
+                    "field": "data.dstport"
+                  }
+                },
+                {
+                  "range": {
+                    "timestamp": {
+                      "from": "{{period_end}}||-5m",
+                      "to": "{{period_end}}",
+                      "include_lower": true,
+                      "include_upper": true,
+                      "format": "epoch_millis"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggregations": {
+            "sources": {
+              "composite": {
+                "size": 1000,
+                "sources": [
+                  {
+                    "srcip": {
+                      "terms": {
+                        "field": "data.srcip",
+                        "missing_bucket": false,
+                        "order": "asc"
+                      }
+                    }
+                  },
+                  {
+                    "protocol": {
+                      "terms": {
+                        "field": "data.protocol",
+                        "missing_bucket": false,
+                        "order": "asc"
+                      }
+                    }
+                  },
+                  {
+                    "tcp_flags": {
+                      "terms": {
+                        "field": "data.tcp.flags",
+                        "missing_bucket": true,
+                        "missing_order": "last",
+                        "order": "asc"
+                      }
+                    }
+                  }
+                ]
+              },
+              "aggregations": {
+                "unique_ports": {
+                  "cardinality": {
+                    "field": "data.dstport",
+                    "precision_threshold": 1000
+                  }
+                },
+                "unique_targets": {
+                  "cardinality": {
+                    "field": "data.dstip",
+                    "precision_threshold": 10
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "bucket_level_trigger": {
+        "name": "At least 30 unique destination ports from one source/protocol/flag family in 5 minutes",
+        "severity": "2",
+        "condition": {
+          "buckets_path": {
+            "unique_ports": "unique_ports",
+            "unique_targets": "unique_targets"
+          },
+          "parent_bucket_path": "sources",
+          "script": {
+            "source": "params.unique_ports >= 30",
+            "lang": "painless"
+          },
+          "gap_policy": "skip"
+        },
+        "actions": []
+      }
+    }
+  ]
+}

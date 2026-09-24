@@ -256,6 +256,8 @@ rule=100348/L10  TCP NULL scan
             </tbody>
           </table>
         </div>
+        <div class="proves"><span class="arw">and the correction</span><span>An earlier review of my own notes recorded this gap wrongly, and wrongly in the <b>reassuring</b> direction: it assumed a 10-port scan of 5 SYN + 5 FIN would produce two buckets of five, each merely under threshold. It does not. The non-SYN portion forms <b>no bucket at all</b>, because pf never logs those flags. The practical consequence is more severe than the note claimed — <b>lowering the threshold cannot compensate</b>, at any value, because only the SYN portion is ever visible to the monitor.</span></div>
+        <div class="proves" style="margin-top:12px"><span class="arw">worth naming</span><span>The complementarity across these six is <b>accidental, not designed</b>. Nobody chose pf's flag handling to align with Suricata's signature set. It is a property to preserve deliberately and re-verify whenever either layer changes — not an architectural guarantee to rely on.</span></div>
         <div class="proves"><span class="arw">limits</span><span>UDP remained untested, and the next test showed that careful pacing can still stay below every elevated layer.</span></div>
       </div>
 
@@ -322,6 +324,24 @@ highest level reached: 6</span></pre></div>
       </div>
     </div>
     <div class="proves" style="margin-top:16px"><span class="arw">why say it</span><span>A detector that records correctly but does not route an actionable notification is not yet an end-to-end operational alerting control. Reporting it as &ldquo;live&rdquo; without that qualifier would overstate the workflow.</span></div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Reproducibility</p>
+    <h2>The monitor itself</h2>
+    <p class="lede">Everything above rests on one OpenSearch Alerting monitor. It is published here in full, sanitized only for lab addresses, so the thresholds and aggregations can be read rather than taken on trust.</p>
+    <div class="term">
+      <div class="term-head"><span class="term-host siem">vertical-scan-monitor-sanitized.json</span><span class="term-what">the parts that decide</span></div>
+      <pre><span class="out">schedule      every 5 MINUTES
+composite     srcip &middot; protocol &middot; tcp_flags
+unique_ports  cardinality(data.dstport)  <span class="hl-atk">precision_threshold: 1000</span>
+unique_targets cardinality(data.dstip)   precision_threshold: 10
+trigger       params.unique_ports &gt;= 30        severity 2
+actions       []                               &larr; records, notifies nobody</span></pre>
+    </div>
+    <p class="lede" style="margin-top:16px">One consequence is worth stating because it changes how every count above should be read: <span class="mono">unique_ports</span> is an <b>approximate</b> cardinality aggregation, so all four detection figures — 34, 67, 813 and 1,484 ports — are <em>estimates</em>, not exact tallies. OpenSearch documents counts below the precision threshold (here 1,000) as &ldquo;expected to be close to accurate,&rdquo; not exact; the <b>1,484-port</b> result sits above that threshold and is likely the least accurate of the four. For 67, 813 and 1,484 the margin over the trigger is too wide for estimation error to plausibly change the outcome. The <b>34-port</b> detection is the exception: it clears <span class="mono">params.unique_ports &gt;= 30</span> by only four ports, so it merits corroboration against the raw firewall events before it is cited as a firm count.</p>
+    <p class="lede" style="margin-top:14px"><a href="vertical-scan-monitor-sanitized.json" style="color:var(--attack-ink)">Download the full monitor definition &rarr;</a></p>
   </section>
 
 
