@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Measurement-driven port-scan detection on OPNsense + Wazuh, validated with queries and raw output.">
+<meta name="description" content="Measurement-driven port-scan detection on OPNsense + Wazuh, validated with queries and sanitized evidence.">
 <title>Vertical Scan Detection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -219,7 +219,7 @@ anything else exceeding 14        0</span></pre>
 Not shown: 100 filtered tcp ports (no-response)
 Nmap done: 1 IP address (1 host up) scanned in 3.07 seconds</span></pre></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what the monitor recorded</span></div>
-        <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.20</span>","tcp","S"]
+        <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.30</span>","tcp","S"]
 raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30   crossed: true
 alerts: <span class="hl-trust">1</span>   state: ACTIVE -&gt; COMPLETED   latency: ~1m53s   error: none</span></pre></div>
         <div class="proves"><span class="arw">proves</span><span>91 unique ports crossed the threshold with exact attribution, and the corrected schedule produced <b>one alert rather than five duplicate evaluations</b>.</span></div>

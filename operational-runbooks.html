@@ -185,11 +185,12 @@
   <section>
     <p class="kicker">Runbook I</p>
     <h2>Linux IR for a high-severity alert</h2>
-    <p class="lede">A fixed sequence so a level-10+ alert is worked the same way every time — and so volatile evidence is captured <b>before</b> containment destroys it. Fifteen steps in the full runbook; this is the spine.</p>
+    <p class="lede">A fixed sequence so a level-10+ alert is worked the same way every time. Capture a bounded network sample and process state before containment when it is safe to do so; if active harm demands immediate isolation, contain first and document the evidence lost. Fifteen steps in the full runbook; this is the spine.</p>
 
     <div class="term siem"><div class="term-head"><span class="term-host siem">workflow</span><span class="term-what">the spine</span></div>
     <pre><span class="out">confirm → processes → network → capture → contain
         → forensics → hunt persistence → remediate → report</span></pre></div>
+    <p class="note" style="margin-top:14px">Before running the example commands, set <span class="mono">PID</span>, <span class="mono">REMOTE_IP</span>, <span class="mono">ADMIN_IP</span> and <span class="mono">WAZUH_MANAGER_IP</span> from verified case evidence. Set <span class="mono">SERVICE</span> only if the process belongs to a confirmed malicious unit; set <span class="mono">DISK_IMAGE</span> only when a verified forensic image is available. Adapt paths and ports to the in-scope host.</p>
 
     <div class="steps" style="margin-top:18px">
 
@@ -220,45 +221,53 @@
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">04</span><h3 class="step-title">Evidence first — capture before touching anything</h3></div>
+        <div class="step-head"><span class="step-num">04</span><h3 class="step-title">Preserve volatile evidence if containment can wait</h3></div>
         <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">preserve the C2 traffic</span></div>
-        <pre><span class="cmd">mkdir -p /root/ir-evidence
-tcpdump -i any -nn -s0 host $REMOTE_IP \
-  -w /root/ir-evidence/suspect-$REMOTE_IP-$(date -u +%Y%m%d-%H%M%S).pcap</span></pre></div>
-        <div class="proves"><span class="arw">discipline</span><span>Packet capture and process/file state are preserved <b>before</b> any kill or block — containment destroys volatile evidence.</span></div>
+        <pre><span class="cmd">umask 077; mkdir -p /root/ir-evidence
+timeout --preserve-status --signal=INT 15s tcpdump -i any -nn -s0 "host $REMOTE_IP" \
+  -w "/root/ir-evidence/suspect-$(date -u +%Y%m%d-%H%M%S).pcap"</span></pre></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">process state before stopping it</span></div>
+        <pre><span class="cmd">cp "/proc/$PID/exe" /root/ir-evidence/suspect.bin
+cp "/proc/$PID/maps" "/root/ir-evidence/proc-$PID.maps"
+cp "/proc/$PID/environ" "/root/ir-evidence/proc-$PID.environ"
+cp "/proc/$PID/status" "/root/ir-evidence/proc-$PID.status"
+# If containment can wait, acquire memory while the process is still running:
+./avml "/root/ir-evidence/mem-$(date -u +%Y%m%d-%H%M%S).lime"</span></pre></div>
+        <div class="proves"><span class="arw">discipline</span><span>The packet capture is capped at 15 seconds; process state and, when feasible, RAM are acquired before termination. Restrict access to the evidence folder: process environment data may contain secrets.</span></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">05</span><h3 class="step-title">Contain — block the C2, keep SSH and telemetry alive</h3><span class="host-tag siem">UFW</span></div>
+        <div class="step-head"><span class="step-num">05</span><h3 class="step-title">Contain — stop the active C2 and block reconnection</h3><span class="host-tag siem">UFW</span></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">victim host</span></div>
-        <pre><span class="cmd">ufw allow from $ADMIN_IP to any port 22 proto tcp   # don't lock yourself out</span>
-<span class="cmd">ufw allow out to 198.51.100.10 port 1514 proto tcp  # keep Wazuh reporting</span>
-<span class="cmd">ufw deny out to $REMOTE_IP                           # cut the beacon</span>
-<span class="cmd">ss -ntp state established | grep $REMOTE_IP || echo "connection dropped"</span></pre></div>
-        <div class="proves"><span class="arw">note</span><span>Order matters — allow SSH and Wazuh <em>before</em> the block, so containment severs neither your access nor your visibility.</span></div>
+        <pre><span class="cmd">ufw allow from "$ADMIN_IP" to any port 22 proto tcp</span>
+<span class="cmd">ufw allow out to "$WAZUH_MANAGER_IP" port 1514 proto tcp</span>
+<span class="cmd">ufw deny out to "$REMOTE_IP"   # prevent a new connection</span>
+<span class="cmd">kill -TERM "$PID"                # close the established session</span>
+<span class="cmd">ss -ntp state established | grep -F -- "$REMOTE_IP" || echo "No established C2 socket observed"</span></pre></div>
+        <div class="proves"><span class="arw">verify</span><span>Stock UFW accepts established traffic before user deny rules, so the deny rule alone may leave an active beacon connected. Confirm the suspect process has stopped, watch for respawn, and check host or perimeter flow logs for continued traffic. If it survives or resumes, isolate the host through the approved response path.</span></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Forensics — capture memory, collect, hash, timeline</h3><span class="host-tag atk">most volatile first</span></div>
-        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">RAM — capture before anything else</span></div>
-        <pre><span class="cmd"># full memory image — avml is a single static binary, no kernel module needed
-./avml /root/ir-evidence/mem-$(hostname)-$(date -u +%Y%m%d-%H%M%S).lime</span>
-<span class="out"># analyse offline with Volatility 3 (Linux):
+        <div class="step-head"><span class="step-num">06</span><h3 class="step-title">Forensics — collect, timeline, then hash</h3><span class="host-tag atk">post-containment</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">analyst workstation</span><span class="term-what">memory acquired in step 04, if safe</span></div>
+        <pre><span class="out"># analyse offline with Volatility 3 (Linux):
 #   vol -f mem-*.lime linux.pslist   linux.pstree
 #   vol -f mem-*.lime linux.netstat  linux.bash   linux.malfind</span></pre></div>
-        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">live artifacts from /proc</span></div>
-        <pre><span class="cmd"># the live binary straight out of /proc — recovers it even if unlinked on disk
-cp /proc/$PID/exe   /root/ir-evidence/suspect.bin
-cat /proc/$PID/maps /proc/$PID/environ /proc/$PID/status &gt; /root/ir-evidence/proc-$PID.txt
-last -Fw &gt; …/logins.txt ; lastb -Fw &gt; …/failed.txt ; cp ~/.bash_history …/
+        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">host logs</span></div>
+        <pre><span class="cmd">last -Fw &gt; /root/ir-evidence/logins.txt
+lastb -Fw &gt; /root/ir-evidence/failed.txt
+cp /root/.bash_history /root/ir-evidence/bash_history.txt
 journalctl --since "-4 hours" &gt; /root/ir-evidence/journal.txt</span></pre></div>
-        <div class="term"><div class="term-head"><span class="term-host atk">victim host</span><span class="term-what">integrity + timeline</span></div>
-        <pre><span class="cmd"># hash every artifact — this is what makes it evidence, not just a copy
-sha256sum /root/ir-evidence/* | tee /root/ir-evidence/SHA256SUMS</span>
-<span class="cmd"># filesystem super-timeline (recovers deleted entries) with The Sleuth Kit
-fls -r -m / /dev/sda2 &gt; /root/ir-evidence/bodyfile
-mactime -b /root/ir-evidence/bodyfile -d &gt; /root/ir-evidence/timeline.csv</span></pre></div>
-        <div class="proves"><span class="arw">tooling &amp; custody</span><span>Acquire with <span class="mono">avml</span> / LiME; analyse memory in <span class="mono">Volatility 3</span>; disk and timeline via <span class="mono">Sleuth Kit</span> / <span class="mono">Autopsy</span> / <span class="mono">plaso</span>; broad live triage with <span class="mono">Velociraptor</span> or UAC. Every item is logged with collector, UTC time, source path and SHA-256 — captured <b>before</b> the kill, hashed <b>at</b> collection.</span></div>
+        <div class="term"><div class="term-head"><span class="term-host atk">case evidence copy</span><span class="term-what">integrity + timeline</span></div>
+        <pre><span class="cmd"># Optional offline timeline from a verified forensic disk image:
+if [ -n "${DISK_IMAGE:-}" ]; then
+  fls -r -m / "$DISK_IMAGE" &gt; /root/ir-evidence/bodyfile
+  mactime -b /root/ir-evidence/bodyfile -d &gt; /root/ir-evidence/timeline.csv
+fi
+# After collection finishes, hash every completed file (except this manifest):
+find /root/ir-evidence -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+  | sort -z | xargs -0 -r sha256sum &gt; /root/ir-evidence/SHA256SUMS</span></pre></div>
+        <div class="proves"><span class="arw">tooling &amp; custody</span><span>Acquire RAM with <span class="mono">avml</span> when safe; analyse it offline with <span class="mono">Volatility 3</span>. Run <span class="mono">fls</span> against a verified disk image on the analyst's evidence copy, not a guessed live partition. Record collector, UTC time and source path, then hash completed artifacts. If immediate containment delayed memory acquisition, a later image may miss the live process.</span></div>
       </div>
 
       <div class="step">
@@ -271,20 +280,28 @@ mactime -b /root/ir-evidence/bodyfile -d &gt; /root/ir-evidence/timeline.csv</sp
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">08</span><h3 class="step-title">Remediate — stop it, and stop it respawning</h3></div>
+        <div class="step-head"><span class="step-num">08</span><h3 class="step-title">Remediate — verify the stop and remove persistence</h3></div>
         <div class="term"><div class="term-head"><span class="term-host atk">victim host</span></div>
-        <pre><span class="cmd">kill $PID; ps -p $PID || echo "stopped"</span>
-<span class="cmd">systemctl disable --now $SERVICE; systemctl daemon-reload   # if it respawns</span></pre></div>
+        <pre><span class="cmd">ps -p "$PID" || echo "process stopped"</span>
+<span class="cmd">systemctl disable --now "$SERVICE"   # only after confirming the malicious unit</span></pre></div>
       </div>
 
       <div class="step">
         <div class="step-head"><span class="step-num">09</span><h3 class="step-title">Report — export a portable evidence bundle</h3><span class="host-tag siem">manager</span></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh manager</span></div>
-        <pre><span class="cmd">CASE="ir-$(date -u +%Y%m%d-%H%M%S)"; mkdir -p /root/$CASE
-jq -c 'select(.agent.name==$victim)' …/alerts.json   &gt; /root/$CASE/alerts.json
-jq -c 'select(.agent.name==$victim)' …/archives.json &gt; /root/$CASE/archives.json
-jq -r '…|@tsv' /root/$CASE/alerts.json &gt; /root/$CASE/alert-summary.tsv</span></pre></div>
-        <div class="proves"><span class="arw">output</span><span>A timestamped case folder — raw alerts, raw archives, and a readable command timeline — plus the filled analyst-notes template that closes the runbook.</span></div>
+        <pre><span class="cmd">VICTIM_AGENT="&lt;confirmed-agent-name&gt;"
+CASE="ir-$(date -u +%Y%m%d-%H%M%S)"; mkdir -p "/root/$CASE"
+jq -c --arg victim "$VICTIM_AGENT" 'select(.agent.name == $victim)' \
+  /var/ossec/logs/alerts/alerts.json &gt; "/root/$CASE/alerts.json"
+# Archives are available only if archive logging was enabled:
+if [ -f /var/ossec/logs/archives/archives.json ]; then
+  jq -c --arg victim "$VICTIM_AGENT" 'select(.agent.name == $victim)' \
+    /var/ossec/logs/archives/archives.json &gt; "/root/$CASE/archives.json"
+fi
+jq -r '[.timestamp, .agent.name, .rule.id, .rule.description,
+        (.data.audit.command // "")] | @tsv' "/root/$CASE/alerts.json" \
+  &gt; "/root/$CASE/alert-summary.tsv"</span></pre></div>
+        <div class="proves"><span class="arw">output</span><span>A timestamped case folder — raw alerts, archives if enabled, and a readable alert summary — plus the filled analyst-notes template that closes the runbook.</span></div>
       </div>
 
     </div>

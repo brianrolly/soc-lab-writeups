@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="A credentialed scan found a CVSS 9.8 in the SIEM's own bundled Node.js. This is the triage that separates version-vulnerable from actually-exploitable - branch applicability, deployment reachability, a vendor that ships it unfixed, and why two scanners disagreed.">
+<meta name="description" content="A credentialed scan found a CVSS 9.8 in a SIEM's bundled Node.js. This triage checks branch applicability, deployment reachability, the vendor packages available in August 2026, and why two scanners disagreed.">
 <title>What a 9.8 Actually Means</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -220,7 +220,7 @@
     <p class="kicker">The finding</p>
     <h2>A critical, in the monitoring stack itself</h2>
     <p class="lede">An authenticated scan read the actual installed versions on the SIEM host. Buried in the results: a CVSS 9.8 in the <b>Node.js runtime bundled inside the dashboard</b> &mdash; version 18.19.0, seven CVEs, base score 9.8.</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-m &middot; credentialed scan</span><span class="term-what">plugin 190856</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">assessment-siem &middot; credentialed scan</span><span class="term-what">plugin 190856</span></div>
     <pre><span class="out">Path              : /usr/share/wazuh-dashboard/node/bin/node
 Installed version : 18.19.0
 Fixed version     : 18.19.1
@@ -228,16 +228,16 @@ CVSS v3.0         : <span class="hl-atk">9.8 (CRITICAL)</span>
 CVEs              : CVE-2023-46809, CVE-2024-21890, -21891,
                     -21892, -21896, -22017, -22019</span></pre></div>
     <div class="proves"><span class="arw">and worse</span><span>That exact binary is not sitting idle on disk. It <b>is the process listening on the network</b> &mdash; the dashboard people log into.</span></div>
-    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">ss -tlnp</span></div>
+    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">assessment-siem</span><span class="term-what">ss -tlnp</span></div>
     <pre><span class="cmd">ss -tlnp | grep :443</span>
 <span class="out">LISTEN 0.0.0.0:443  users:(("<span class="hl-atk">node</span>",pid=737))</span></pre></div>
-    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">resolve the listener to its executable and version</span></div>
+    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">assessment-siem</span><span class="term-what">resolve the listener to its executable and version</span></div>
     <pre><span class="cmd">readlink -f /proc/737/exe</span>
 <span class="out">/usr/share/wazuh-dashboard/node/bin/node</span>
 <span class="cmd">/proc/737/exe --version</span>
 <span class="out"><span class="hl-atk">v18.19.0</span></span></pre></div>
     <div class="proves"><span class="arw">identity</span><span>The listener resolves to the <b>same path and version</b> the credentialed plugin reported. This closes the gap between a vulnerable file found on disk and the process actually serving TCP&nbsp;443.</span></div>
-    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">and what privilege does that listener actually hold?</span></div>
+    <div class="term siem" style="margin-top:14px"><div class="term-head"><span class="term-host siem">assessment-siem</span><span class="term-what">and what privilege does that listener actually hold?</span></div>
     <pre><span class="cmd">grep -E 'Uid|CapEff' /proc/737/status; capsh --decode=0x400</span>
 <span class="out">Uid:     111  111  111  111
 CapEff:  0000000000000400
@@ -277,7 +277,7 @@ CapEff:  0000000000000400
 
   <section>
     <p class="kicker">The dead end</p>
-    <h2>The vendor's current release ships it unfixed</h2>
+    <h2>The August vendor package still shipped it</h2>
     <p class="lede">The obvious remediation is &ldquo;upgrade.&rdquo; The host was running Wazuh&nbsp;4.14.5, so I downloaded the 4.14.7 candidate packages from the vendor repository and inspected them without installing. Package listing identified the bundled log4j jar; extracting the dashboard payload and running its bundled Node binary with <span class="mono">--version</span> identified the runtime. Both components the scan flagged are <b>unchanged</b>.</p>
     <div class="flow-scroll">
     <table class="dt">
@@ -286,7 +286,7 @@ CapEff:  0000000000000400
         <tr><td>Node.js (dashboard)</td><td class="m">18.19.0</td><td class="m" style="color:var(--attack-ink)">18.19.0 &mdash; unchanged</td><td class="m">18.19.1</td></tr>
         <tr><td>log4j-core (indexer)</td><td class="m">2.25.3</td><td class="m" style="color:var(--attack-ink)">2.25.3 &mdash; unchanged</td><td class="m">2.25.5</td></tr>
       </tbody></table></div>
-    <div class="proves" style="margin-top:18px"><span class="arw">so</span><span>This is a <b>vendor-pinned</b> vulnerability, not a patch backlog &mdash; the current release leaves it in place. And 18.19.1 would only clear the plugin: <b>Node&nbsp;18 reached end-of-life on 2025-03-27</b>, so the runtime is unsupported regardless. Immediate mitigation is architectural access restriction; permanent remediation needs a vendor-supported runtime.</span></div>
+    <div class="proves" style="margin-top:18px"><span class="arw">so</span><span>As of the 2026-08-31 assessment, this was a <b>vendor-pinned</b> vulnerability in the latest package inspected (4.14.7), not a patch backlog on the host. Wazuh 4.14.8 was released on 2026-09-23; its bundled component versions have not been checked for this writeup, so this finding makes no claim about that release. And 18.19.1 would only clear the plugin: <b>Node&nbsp;18 reached end-of-life on 2025-03-27</b>, so the runtime is unsupported regardless. Immediate mitigation is architectural access restriction; permanent remediation needs a vendor-supported runtime.</span></div>
   </section>
 
   <section>
@@ -347,7 +347,7 @@ CapEff:  0000000000000400
       <div class="card tell"><h3>The lesson</h3><p>A second scanner isn't redundant belt-and-suspenders &mdash; it covers different ground. The most severe issue in the environment was visible to <b>exactly one of the two</b>. Run only the other, and the 9.8 in the SIEM goes unseen.</p></div>
     </div>
     <p class="lede" style="margin-top:26px">One more claim worth proving rather than trusting: that the OS packages OpenVAS listed really were patched, so a severity-0 verdict is <i>correct</i> and not a miss. OpenVAS logged the OpenSSH <b>regreSSHion</b> RCE (CVE-2024-6387) among them &mdash; the kind of name that stops a shift.</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-m</span><span class="term-what">is regreSSHion actually present, or backport-patched?</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">assessment-siem</span><span class="term-what">is regreSSHion actually present, or backport-patched?</span></div>
     <pre><span class="cmd">dpkg -l openssh-server | awk '/^ii/{print $3}'</span>
 <span class="out">1:9.6p1-3ubuntu13.18</span>
 <span class="cmd"># Ubuntu fixed CVE-2024-6387 in 1:9.6p1-3ubuntu13.3</span>
@@ -387,12 +387,13 @@ CapEff:  0000000000000400
       <div class="att-row"><span class="att-id">Tenable</span><span class="att-name"><a target="_blank" rel="noopener" href="https://www.tenable.com/plugins/nessus/190856">Nessus plugin 190856</a> &mdash; CVSS 9.8, VPR 4.9, version-only detection</span></div>
       <div class="att-row"><span class="att-id">Apache</span><span class="att-name"><a target="_blank" rel="noopener" href="https://logging.apache.org/security.html">Log4j security advisories</a> &mdash; CVE-2026-34477/-34478/-34480 fixed 2.25.4, CVE-2026-49844 fixed 2.25.5</span></div>
       <div class="att-row"><span class="att-id">Wazuh</span><span class="att-name"><a target="_blank" rel="noopener" href="https://documentation.wazuh.com/current/release-notes/release-4-14-7.html">Wazuh 4.14.7 release notes</a> &mdash; candidate release whose packages were inspected offline</span></div>
+      <div class="att-row"><span class="att-id">Wazuh</span><span class="att-name"><a target="_blank" rel="noopener" href="https://documentation.wazuh.com/current/release-notes/release-4-14-8.html">Wazuh 4.14.8 release notes</a> &mdash; later release, not package-inspected for this assessment</span></div>
       <div class="att-row"><span class="att-id">Ubuntu</span><span class="att-name"><a target="_blank" rel="noopener" href="https://ubuntu.com/security/CVE-2024-6387">CVE-2024-6387 status</a> &mdash; Ubuntu&nbsp;24.04 fixed package version 1:9.6p1-3ubuntu13.3</span></div>
       <div class="att-row"><span class="att-id">Detail</span><span class="att-name"><a target="_blank" rel="noopener" href="https://nvd.nist.gov/vuln/detail/CVE-2024-21896">NVD CVE-2024-21896</a> (the plugin's 9.8 &mdash; Node 20/21) &middot; <a target="_blank" rel="noopener" href="https://nvd.nist.gov/vuln/detail/CVE-2024-22019">NVD CVE-2024-22019</a> (the reachable HTTP/1.1 DoS)</span></div>
     </div>
   </section>
 
-  <footer><p class="note"><b>Authorized client work.</b> Credentialed vulnerability scanning of a client's single-node Wazuh SIEM, using an authorized service account. All exploitation analysis is assessment only &mdash; no exploit was run against production. Client identity withheld; internal addresses shown as RFC&nbsp;5737 documentation ranges; component paths and CVE identifiers are public. Components: Node.js 18.19.0 (end-of-life 2025-03-27; CVE-2023-46809, CVE-2024-21890/-21891/-21892/-21896/-22017/-22019 and later 2024/2025 bundles); Apache log4j-core 2.25.3 (CVE-2026-34477/-34478/-34480/-49844). Branch applicability per the Node.js security-release advisories; scanner plugin 190856 is CVSS 9.8 / VPR 4.9, version-only.</p></footer>
+  <footer><p class="note"><b>Authorized client work.</b> Credentialed vulnerability scanning of a single-node Wazuh SIEM, using an authorized service account. All exploitation analysis is assessment only &mdash; no exploit was run against production. Client identity withheld; the hostname is an alias, internal addresses shown as RFC&nbsp;5737 documentation ranges; component paths and CVE identifiers are public. Components: Node.js 18.19.0 (end-of-life 2025-03-27; CVE-2023-46809, CVE-2024-21890/-21891/-21892/-21896/-22017/-22019 and later 2024/2025 bundles); Apache log4j-core 2.25.3 (CVE-2026-34477/-34478/-34480/-49844). Branch applicability per the Node.js security-release advisories; scanner plugin 190856 is CVSS 9.8 / VPR 4.9, version-only.</p></footer>
 </div>
 </body>
 </html>

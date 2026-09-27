@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Detection engineering and purple-team writeups from authorized client engagements.">
+<meta name="description" content="Detection engineering and purple-team writeups from authorized client work.">
 <title>SOC Writeups</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -167,7 +167,7 @@
   <header class="mast">
     <p class="eyebrow">SOC<span class="sep">/</span>Detection Engineering</p>
     <h1>Security Writeups</h1>
-    <p class="thesis">Hands-on detection engineering and purple-team work from authorized client engagements — OPNsense perimeter, Suricata IDS, Wazuh/OpenSearch SIEM. Each piece backs its claims with <b>queries and raw output</b>, not assertion.</p>
+    <p class="thesis">These writeups cover authorized client work in detection engineering and purple-team exercises — OPNsense perimeter, Suricata IDS, Wazuh/OpenSearch SIEM. Each piece shows the <b>methods, sanitized evidence, or operational artifacts</b> behind its claims.</p>
     <div class="meta">
       <span class="chip"><b>Perimeter</b> OPNsense · Suricata</span>
       <span class="chip"><b>SIEM</b> Wazuh · OpenSearch</span>
@@ -187,7 +187,7 @@
           <h3 class="step-title" style="font-size:1.15rem">Rogue-Agent Log Injection</h3>
           <span class="host-tag atk">purple team</span>
         </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Full kill chain with verbatim output, plus the verified fix.</p></div>
+        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">An anonymous host enrolls into the SIEM with no credential, becomes a trusted agent, and injects a forged security alert. Sanitized command and output excerpts document the chain and verified fix.</p></div>
         <div class="proves"><span class="arw" style="color:var(--attack-ink)">MITRE</span><span class="mono" style="font-size:.85rem;color:var(--muted)">T1136 · T1078 · T1565.001 — &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
       </div></a>
 
@@ -207,7 +207,7 @@
           <h3 class="step-title" style="font-size:1.15rem">What a 9.8 Actually Means</h3>
           <span class="host-tag atk">validation</span>
         </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A credentialed scan found a CVSS 9.8 in the SIEM's own bundled Node.js. The triage that separates version-vulnerable from exploitable: three reachability checks, a vendor that ships it unfixed, and why one of two scanners never saw it.</p></div>
+        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">A credentialed scan found a CVSS 9.8 in the SIEM's bundled Node.js. The triage separates version-vulnerable from exploitable: reachability checks, inspection of the then-current vendor package, and why one of two scanners never saw it.</p></div>
         <div class="proves"><span class="arw" style="color:var(--attack-ink)">CVSS</span><span class="mono" style="font-size:.85rem;color:var(--muted)">9.8 &middot; triaged &mdash; &nbsp;<b style="color:var(--attack-ink)">Read &rarr;</b></span></div>
       </div></a>
 

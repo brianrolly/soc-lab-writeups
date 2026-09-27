@@ -193,7 +193,7 @@
   "query": { "bool": { "filter": [
     { "term":   { "decoder.name": "pf" } },
     { "term":   { "data.action": "block" } },
-    { "terms":  { "data.dstip": ["198.51.100.36","198.51.100.37"] } },
+    { "terms":  { "data.dstip": ["198.51.100.46","198.51.100.47"] } },
     { "exists": { "field": "data.dstport" } },
     { "range":  { "timestamp": { "gte": "now-2d", "lt": "now-1d" } } }
   ] } },
@@ -247,7 +247,7 @@ which is larger than the limit of 972.7mb
     <div class="grid">
       <div class="card"><h3>It was invisible</h3><p>Nothing had asked the cluster a question spanning more than a day. The failure mode would have been a blank dashboard panel with no obvious cause.</p></div>
       <div class="card"><h3>It would have spread</h3><p>Every multi-day dashboard, every telemetry pilot, every "has this source been here before?" hunt would have hit the same wall.</p></div>
-      <div class="card tell"><h3>Root cause remains</h3><p>The heap raise bought headroom; 540 shards is the underlying defect. The real fix is an ISM rollover policy — tracked, not urgent.</p></div>
+      <div class="card tell"><h3>Root cause remains</h3><p>The heap raise bought headroom; 540 shards is the underlying defect. The longer-term work is to right-size new indices and reduce existing shard count through retention, deletion or consolidation. An ISM policy can automate the lifecycle, but rollover alone creates another index. Tracked, not urgent.</p></div>
     </div>
     <p class="lede" style="margin-top:22px">Operational note recorded for the team: on this single-node cluster, <b>yellow with unassigned replicas is the correct steady state</b>, and <b>red for the first minute after a restart is recovery, not failure</b> — a distinction that had already caused one needless rollback.</p>
   </section>
@@ -257,7 +257,7 @@ which is larger than the limit of 972.7mb
     <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The fix was one line; the value was catching it before it mattered.</b> A monitoring platform that silently cannot answer multi-day questions is worse than one that is obviously down — at least the latter gets fixed. The investigation also produced the operational facts the team now relies on: what healthy looks like on a single-node cluster, and what is merely recovery.</p>
   </section>
 
-  <footer><p class="note"><b>Authorized client work.</b> Capacity finding on a client’s single-node Wazuh/OpenSearch cluster, found while measuring detection data. Client identity withheld.</p></footer>
+  <footer><p class="note"><b>Authorized client work.</b> Capacity finding on a client’s single-node Wazuh/OpenSearch cluster, found while measuring detection data. Client identity withheld; example VIPs are RFC 5737 documentation addresses.</p></footer>
 </div>
 </body>
 </html>
