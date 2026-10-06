@@ -168,7 +168,7 @@
   <header class="mast">
     <p class="eyebrow">SIEM Operations<span class="sep">/</span>Capacity<span class="sep">/</span>Portfolio</p>
     <h1>The Query That Exposed a Broken SIEM</h1>
-    <p class="thesis">Asking the SIEM a week-long question failed with a circuit-breaker error — and uncovered a capacity defect that had <b>no symptom</b> until something asked a bigger question. It would have silently broken every dashboard to come.</p>
+    <p class="thesis">Measuring a week of detection data hit a circuit-breaker error — and uncovered a capacity defect that had <b>no visible service outage</b>. The failed queries exposed a limit that could also affect broader hunts and dashboard searches.</p>
     <div class="meta">
       <span class="chip"><b>Symptom</b> circuit_breaking_exception</span>
       <span class="chip"><b>Root cause</b> 1 GB heap on a 12 GB host</span>
@@ -179,12 +179,12 @@
 
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">This began as routine measurement — a week-long query to tune a detection threshold — and became a capacity finding. <b>The most dangerous defects in a SIEM are the ones with no symptom</b>, and this was one of them.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">This began as routine measurement &mdash; querying daily slices of a week of traffic to tune a detection threshold &mdash; and became a capacity finding. <b>A running SIEM can still fail the searches an analyst needs.</b> The measurement exposed that limit here.</p>
   </section>
 
   <section>
     <p class="kicker">The trigger</p>
-    <h2>A routine measurement, run one day too wide</h2>
+    <h2>A routine measurement exposed a capacity limit</h2>
     <p class="lede">It surfaced while deriving a port-scan detection threshold from a week of real traffic — a composite aggregation over the firewall-block events, run one 24-hour slice at a time. Identical each day; only the time range changed.</p>
     <div class="term siem"><div class="term-head"><span class="term-host siem">opensearch</span><span class="term-what">the query · one day-slice</span></div>
     <pre><span class="cmd">POST wazuh-alerts-*/_search
@@ -209,28 +209,28 @@
     }
   } }
 }</span></pre></div>
-    <div class="proves"><span class="arw">the catch</span><span>A one-day window allocated fine. Widening <span class="mono">gte</span> to <span class="mono">now-7d</span> forced the composite plus two <span class="mono">cardinality</span> sub-aggregations to hold far more fielddata at once — and on a heap already ~85% consumed, that was the straw.</span></div>
+    <div class="proves"><span class="arw">the catch</span><span>The recent one-day slice completed; queries covering earlier slices in the seven-day study hit the parent circuit breaker on a heap already heavily used at rest. The failure establishes memory pressure, but the response does not identify which structures consumed the heap.</span></div>
   </section>
 
   <section>
     <p class="kicker">The symptom</p>
-    <h2>Day one worked; day seven fell over</h2>
+    <h2>The recent slice worked; earlier slices failed</h2>
     <p class="lede">The first run hid it. The query piped straight into <span class="mono">jq</span> with no error handling, so the error object came back as <span class="mono">Cannot iterate over null</span> and read like a client-side bug. Surfacing the raw response showed the truth:</p>
-    <div class="term siem"><div class="term-head"><span class="term-host siem">opensearch</span><span class="term-what">7-day aggregation</span></div>
+    <div class="term siem"><div class="term-head"><span class="term-host siem">opensearch</span><span class="term-what">seven-day measurement &middot; failed query</span></div>
     <pre><span class="out">circuit_breaking_exception: [parent] Data too large … 974.2mb,
 which is larger than the limit of 972.7mb
   request=0b   fielddata=102.9kb   in_flight=1.1kb</span></pre></div>
-    <div class="proves"><span class="arw">tell</span><span>The query itself used almost nothing (<span class="mono">request=0b</span>). The heap was <b>already full before the query arrived</b>.</span></div>
+    <div class="proves"><span class="arw">tell</span><span>The parent breaker reported total usage near the heap limit despite small child-breaker reservations. <span class="mono">request=0b</span> is the request breaker's accounting at that instant, not a measurement of all memory used by the query; <span class="mono">fielddata=102.9kb</span> does not support attributing the failure to a large fielddata allocation.</span></div>
   </section>
   <section>
     <p class="kicker">The diagnosis</p>
-    <h2>Undersized, not failing</h2>
+    <h2>Heap pressure without a service crash</h2>
     <div class="grid">
       <div class="card flaw"><h3>Heap</h3><p><b>1 GB</b> configured on a host with <b>12 GB</b> total and ~9 GB free and idle.</p></div>
-      <div class="card flaw"><h3>Shards</h3><p><b>540</b> — roughly 27× the ~20-per-GB rule of thumb. Standing shard overhead ate ~850 MB before any query.</p></div>
-      <div class="card"><h3>GC</h3><p><b>0</b> old-gen collections — not thrashing, just starved. Caught before degradation.</p></div>
+      <div class="card flaw"><h3>Shards</h3><p><b>540</b> on a single node. Shard overhead was a plausible contributor to baseline heap pressure, but per-shard memory usage was not measured.</p></div>
+      <div class="card"><h3>GC</h3><p><b>0</b> old-generation collections in the captured statistics. That snapshot showed no old-generation collection activity; it does not establish behavior under sustained load.</p></div>
     </div>
-    <p class="lede" style="margin-top:22px">~150 MB of query scratch was left. One day of data fit; seven did not. The circuit breaker did its job — it <b>rejected the query instead of crashing</b>, which is exactly why there had been no outage and no symptom.</p>
+    <p class="lede" style="margin-top:22px">At-rest heap usage was about <b>850 MB of 1 GB</b>, leaving limited headroom before the parent-breaker limit. The captured figures do not partition that usage between shards and other structures. The circuit breaker <b>rejected the query</b>; the service remained running, but the failed search was already an operational symptom.</p>
   </section>
   <section>
     <p class="kicker">The fix</p>
@@ -238,23 +238,24 @@ which is larger than the limit of 972.7mb
     <div class="term siem"><div class="term-head"><span class="term-host siem">/etc/wazuh-indexer/jvm.options</span><span class="term-what">after restart</span></div>
     <pre><span class="cmd">-Xms1g -Xmx1g   →   -Xms4g -Xmx4g</span>
 <span class="out">heap: 4096MB max, 27% used at rest
-7-day query: completes, all days, no errors</span></pre></div>
+7-day study: all daily query slices complete, no errors</span></pre></div>
     <div class="proves"><span class="arw">note</span><span>Chose 4 GB, not 50%-of-RAM: manager, dashboard and filebeat share the host, and OS page cache is what makes searches fast. Don’t starve it.</span></div>
   </section>
   <section>
     <p class="kicker">Why it mattered</p>
     <h2>A silent blocker, cleared early</h2>
     <div class="grid">
-      <div class="card"><h3>It was invisible</h3><p>Nothing had asked the cluster a question spanning more than a day. The failure mode would have been a blank dashboard panel with no obvious cause.</p></div>
-      <div class="card"><h3>It would have spread</h3><p>Every multi-day dashboard, every telemetry pilot, every "has this source been here before?" hunt would have hit the same wall.</p></div>
-      <div class="card tell"><h3>Root cause remains</h3><p>The heap raise bought headroom; 540 shards is the underlying defect. The longer-term work is to right-size new indices and reduce existing shard count through retention, deletion or consolidation. An ISM policy can automate the lifecycle, but rollover alone creates another index. Tracked, not urgent.</p></div>
+      <div class="card"><h3>Service uptime hid the limit</h3><p>The indexer stayed running while searches failed. Service availability alone had not exposed the query limit; a dashboard relying on a failed search could show an empty panel or an error.</p></div>
+      <div class="card"><h3>Other searches were at risk</h3><p>Multi-day dashboards, telemetry pilots and historical hunts could encounter the same heap limit. Their outcomes depend on the query and workload; these measurements do not prove that every dashboard would fail.</p></div>
+      <div class="card tell"><h3>Shard pressure remains</h3><p>The heap raise cleared the tested query failures; the 540-shard footprint remains a likely contributor to baseline pressure. The longer-term work is to right-size new indices and reduce existing shard count through retention, deletion or consolidation. An ISM policy can automate the lifecycle, but rollover alone creates another index. Tracked, not urgent.</p></div>
     </div>
-    <p class="lede" style="margin-top:22px">Operational note recorded for the team: on this single-node cluster, <b>yellow with unassigned replicas is the correct steady state</b>, and <b>red for the first minute after a restart is recovery, not failure</b> — a distinction that had already caused one needless rollback.</p>
+    <p class="lede" style="margin-top:22px">Operational note recorded for the team: on this single-node cluster, <b>yellow with only unassigned replicas is expected</b> &mdash; all primaries are allocated, but there is no replica redundancy. <b>Red means at least one primary shard is unassigned.</b> During this restart it cleared in about a minute as shards recovered; elapsed time alone is not proof of recovery. Check recovery progress and confirm the cluster reaches yellow or green; investigate primaries that remain unassigned.</p>
+    <p class="lede">References: OpenSearch <a href="https://docs.opensearch.org/latest/install-and-configure/configuring-opensearch/circuit-breaker/" style="color:var(--trust-ink)">circuit-breaker accounting</a> and <a href="https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-health/" style="color:var(--trust-ink)">cluster-health states</a>.</p>
   </section>
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The fix was one line; the value was catching it before it mattered.</b> A monitoring platform that silently cannot answer multi-day questions is worse than one that is obviously down — at least the latter gets fixed. The investigation also produced the operational facts the team now relies on: what healthy looks like on a single-node cluster, and what is merely recovery.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>Raising the heap cleared the tested failures; the value was measuring the search limit.</b> A running monitoring platform still needs to answer the historical queries an analyst relies on. The investigation established the observed heap pressure, a verified capacity improvement, and a remaining shard-sizing concern. It also clarified how to check primary-shard recovery after a restart.</p>
   </section>
 
   <footer><p class="note"><b>Authorized client work.</b> Capacity finding on a client’s single-node Wazuh/OpenSearch cluster, found while measuring detection data. Client identity withheld; example VIPs are RFC 5737 documentation addresses.</p></footer>

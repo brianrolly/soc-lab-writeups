@@ -172,7 +172,7 @@
     <div class="meta">
       <span class="chip"><b>Actor</b> Modat B.V. · *.scanner.modat.io</span>
       <span class="chip"><b>Netblock</b> 85.217.0.0</span>
-      <span class="chip"><b>Volume</b> 63,820 ports / 24h</span>
+      <span class="chip"><b>Port estimate</b> 63,820 / 24h</span>
     </div>
   </header>
   <hr class="rule">
@@ -197,8 +197,9 @@
     <div class="grid">
       <div class="card tell"><h3>Per 5-min window</h3><p><b>48</b> active source IPs.</p></div>
       <div class="card tell"><h3>Per source IP</h3><p>only <b>~20</b> ports — under the 30 threshold.</p></div>
-      <div class="card tell"><h3>Per 24 hours</h3><p><b>63,820</b> unique ports across <b>79</b> addresses.</p></div>
+      <div class="card tell"><h3>Per 24 hours</h3><p>An estimated <b>63,820</b> distinct destination ports across <b>79</b> addresses.</p></div>
     </div>
+    <p class="lede" style="margin-top:22px">The port figure is an <a href="https://docs.opensearch.org/latest/aggregations/metric/cardinality/" style="color:var(--trust-ink)">OpenSearch cardinality estimate</a> across both monitored targets in the 24-hour sample. It is approximate and has not been corroborated by an exact enumeration.</p>
     <p class="lede" style="margin-top:22px">The coordination signature was unmistakable: two addresses fired in the <em>same</em> 5-minute window from the same /16 but <b>split the targets</b> — one hit the first VIP, the other hit the second. Divided coverage, not two independent scanners.</p>
   </section>
   <section>

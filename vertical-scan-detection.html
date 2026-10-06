@@ -314,7 +314,7 @@ highest level reached: 6</span></pre></div>
     <div class="split">
       <div class="card flaw">
         <h3>It is priced in reduced recall</h3>
-        <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That deliberately excludes a known, real, distributed scanner &mdash; one measured at <b>63,820 ports in 24 hours</b> across 79 source addresses.</p>
+        <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That deliberately excludes a known, real, distributed scanner &mdash; one with a cardinality estimate of <b>63,820 distinct destination ports in 24 hours</b> across 79 source addresses.</p>
         <p>Per-source, five-minute cardinality does not alert on that behavior because every observed source-window stays below the line. The clean alert rate and this blind spot are the <b>precision–recall tradeoff</b> described from two sides. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
       </div>
       <div class="card flaw">

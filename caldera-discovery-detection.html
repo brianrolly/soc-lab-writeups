@@ -391,8 +391,8 @@ ip addr ; ip route         # network config</span></pre></div>
     <p class="kicker">The scorecard</p>
     <h2>Honest coverage</h2>
     <div class="tally">
-      <div class="t hit"><b>4</b><span>confirmed alert hits</span></div>
-      <div class="t miss"><b>5</b><span>behaviours with telemetry but no alert</span></div>
+      <div class="t hit"><b>4</b><span>distinct rules with confirmed hits</span></div>
+      <div class="t miss"><b>5</b><span>command stages with telemetry but no alert</span></div>
       <div class="t"><b>8</b><span>benign events wrongly flagged in the same window</span></div>
     </div>
     <div class="flow-scroll">
@@ -410,8 +410,8 @@ ip addr ; ip route         # network config</span></pre></div>
       </tbody></table></div>
     <div class="grid" style="margin-top:22px">
       <div class="card flaw"><h3>The mislabel worth fixing</h3><p>Rule <code>100214</code> fired on the exfiltration &mdash; but its description reads <i>&ldquo;possible ingress tool transfer&rdquo;</i>. This was <b>outbound</b>: <code>curl -F data=@&hellip;</code> to <code>/file/upload</code>. An analyst triaging that alert would have been told the opposite of what happened. A rule that fires on the right event and describes the wrong direction is a false sense of coverage.</p></div>
-      <div class="card flaw"><h3>The shape of the gap</h3><p>Every miss sits between collection and exfiltration &mdash; exactly the window where an intrusion becomes a breach. Discovery is loud and well covered; the quiet middle was not covered at all.</p></div>
-      <div class="card tell"><h3>Why the misses are the deliverable</h3><p>All five missed behaviours were <b>present in <code>archives.json</code></b>. Telemetry was never the problem &mdash; rule coverage was. That distinction decides whether the fix is a new sensor or a new rule, and here it was unambiguously a rule.</p></div>
+      <div class="card flaw"><h3>The shape of the gap</h3><p>The five missed command stages span staging and archiving <b>before the upload</b>, plus cleanup <b>afterward</b>. File discovery and the outbound upload raised alerts; the surrounding preparation and removal of evidence did not.</p></div>
+      <div class="card tell"><h3>Why the misses are the deliverable</h3><p>All five unalerted command stages in the timeline were <b>present in <code>archives.json</code></b>. For those stages, the gap was rule coverage. The separate C2-session row was visible through <code>ss</code> only; it does not establish an archived network event.</p></div>
     </div>
   </section>
 
@@ -420,17 +420,18 @@ ip addr ; ip route         # network config</span></pre></div>
     <h2>The rules the gaps produced</h2>
     <p class="lede">All five are <b>deployed and validated</b> &mdash; not proposals.</p>
     <div class="fix">
-      <div class="fix-item"><span class="fix-tag det">T1074.001</span><p><b>Local staging detection</b> &mdash; alert on <code>mkdir</code> of a staging directory and <code>cp</code> into it from an agent working directory, the pattern common to every collection framework.</p></div>
-      <div class="fix-item"><span class="fix-tag det">T1560.001</span><p><b>Archive-before-exfil</b> &mdash; <code>tar</code>/<code>gzip</code> producing an archive inside a directory that just received copied files. The sequence is the signal, not the utility.</p></div>
-      <div class="fix-item"><span class="fix-tag now">100214</span><p><b>Split ingress from egress</b> &mdash; a higher-confidence child rule for <code>curl -F data=@</code> and <code>/file/upload</code>, described as exfiltration, so the alert text matches the direction of travel.</p></div>
-      <div class="fix-item"><span class="fix-tag det">T1070</span><p><b>Cleanup as corroboration</b> &mdash; removal of a staged archive is weak alone, but strong when it closes a chain that already showed staging and compression.</p></div>
+      <div class="fix-item"><span class="fix-tag det">T1074.001</span><p><b>Local staging detection</b> &mdash; rules <code>100240</code>&ndash;<code>100242</code> match <code>mkdir -p</code> in selected working directories, raise severity for staging-like names, and identify <code>cp</code> into a staging-like destination.</p></div>
+      <div class="fix-item"><span class="fix-tag det">T1560.001</span><p><b>Archive utility detection</b> &mdash; rule <code>100243</code> matches <code>tar</code>, <code>gzip</code>, <code>zip</code> or <code>7z</code> executing from selected working directories. It does not require a preceding copy event or confirm that an archive was created.</p></div>
+      <div class="fix-item"><span class="fix-tag now">100214</span><p><b>Separate upload detection</b> &mdash; rules <code>100244</code> and <code>100248</code> match file-upload indicators in <code>curl</code> events and describe them as possible exfiltration, giving the follow-up alert an egress label.</p></div>
+      <div class="fix-item"><span class="fix-tag det">T1070</span><p><b>Cleanup as corroboration</b> &mdash; rules <code>100245</code> and <code>100247</code> match archive-like paths or recursive removal from selected working directories. Analysts can correlate these command indicators with earlier staging and compression events.</p></div>
       <div class="fix-item"><span class="fix-tag now">Tuning</span><p><b>Scope the noisy five</b> &mdash; exclude <code>cwd=/var/ossec</code> from the netstat and df rules, allowlist <code>cron</code> and <code>wazuh-modulesd</code> for shadow reads, and restrict the systemctl rule to service-management verbs rather than <code>--version</code>.</p></div>
     </div>
+    <p class="lede" style="margin-top:22px">Rule <code>100246</code> adds count-based correlation over the collection group within a 15-minute window. It does not require those events to occur in copy &rarr; archive &rarr; upload &rarr; cleanup order, or prove that every stage occurred.</p>
   </section>
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A detection pack that only reports its hits is marketing.</b> Three emulations produced nine working rules and a nine-item defect list &mdash; five uncovered behaviours, one alert describing the wrong direction, and five rules watching the monitoring stack instead of the adversary. None of that surfaces from reading rule definitions; it surfaces from running an adversary against them and scoring the result honestly. The chain a real intrusion follows &mdash; stage, archive, exfiltrate, erase &mdash; ran end to end through a monitored host and raised two alerts. Knowing that is worth more than the nine rules that worked.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>A detection pack that only reports its hits is marketing.</b> Three emulations produced nine working rules and an eleven-item defect list &mdash; five unalerted command stages, one alert describing the wrong direction, and five rules watching the monitoring stack instead of the adversary. None of that surfaces from reading rule definitions; it surfaces from running an adversary against them and scoring the result honestly. The chain a real intrusion follows &mdash; stage, archive, exfiltrate, erase &mdash; ran end to end through a monitored host and raised alerts at two of seven stages. Knowing that is worth more than the nine rules that worked.</p>
   </section>
 
   <footer><p class="note"><b>Authorized client work.</b> CALDERA adversary emulation against in-scope hosts, across three operations. Client identity withheld; addresses are documentation ranges, and the personal account name and host label in the excerpts are aliases. MITRE ATT&amp;CK: T1033, T1036, T1057, T1069.001, T1082, T1087.001, T1016, T1518, T1059 (Discovery &middot; Execution); T1005, T1074.001, T1083 (Collection); T1560.001 (Archive); T1041 (Exfiltration); T1070 (Defense Evasion).</p></footer>

@@ -237,7 +237,7 @@
           <h3 class="step-title" style="font-size:1.15rem">The Query That Exposed a Broken SIEM</h3>
           <span class="host-tag" style="background:var(--surface-2);color:var(--muted);border:1px solid var(--line)">siem ops</span>
         </div>
-        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host — a capacity defect with no symptom that would have silently broken every dashboard. Found, diagnosed, fixed, verified.</p></div>
+        <div style="padding:0 20px 6px"><p style="margin:0;color:var(--muted)">Measuring detection data exposed a 1 GB heap on a 12 GB host. Queries hit the parent circuit breaker; raising the heap cleared the tested failures. Broader search risks and remaining shard pressure are documented.</p></div>
         <div class="proves"><span class="arw" style="color:var(--muted)">Focus</span><span class="mono" style="font-size:.85rem;color:var(--muted)">SIEM ops — &nbsp;<b style="color:var(--muted)">Read &rarr;</b></span></div>
       </div></a>
 
