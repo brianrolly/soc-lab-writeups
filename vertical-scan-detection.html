@@ -168,11 +168,12 @@
   <header class="mast">
     <p class="eyebrow">Detection Engineering<span class="sep">/</span>Perimeter<span class="sep">/</span>Portfolio</p>
     <h1>Vertical Scan Detection</h1>
-    <p class="thesis">A port-scan detector on an OPNsense perimeter feeding a Wazuh/OpenSearch SIEM — tuned from <b>5,459 source-windows at its true 5-minute grain</b> after a seven-day study exposed a granularity mistake, then validated with the commands, queries, and recorded output kept together.</p>
+    <p class="thesis">A port-scan detector on an OPNsense perimeter feeding a Wazuh/OpenSearch SIEM — tuned from <b>5,459 source-windows in a six-hour sample at five-minute granularity</b> after a seven-day study exposed a granularity mistake. Preserved commands, result summaries, and the sanitized monitor definition document the validation.</p>
     <div class="meta">
       <span class="chip"><b>Stack</b> OPNsense · Suricata · Wazuh/OpenSearch</span>
       <span class="chip"><b>Threshold</b> ≥30 ports / 5 min</span>
-      <span class="chip ok"><span class="dot"></span>Live · dashboard-only · 0 false positives</span>
+      <span class="chip ok"><span class="dot"></span>Live · dashboard-only</span>
+      <span class="chip">0 false positives among 5 reviewed alerts</span>
     </div>
   </header>
 
@@ -181,7 +182,7 @@
   <section style="padding-bottom:6px">
     <p class="kicker">Overview</p>
     <p style="font-size:1.06rem;line-height:1.75;color:var(--muted);max-width:66ch;margin:0">Port scans are the constant background noise of any internet-facing host. The hard part is not seeing them — it is <b>separating a real scan from the ambient hum</b> without burying the analyst in false positives. This is how that line was drawn on an OPNsense + Wazuh stack, and how it was kept honest.</p>
-    <p class="lede" style="margin-top:16px;margin-bottom:0"><b>Scope:</b> the monitor evaluates blocked pf events to the protected VIP set and measures each source's destination-port breadth across that set. Target count remains alert context rather than a gate: requiring exactly one target would have suppressed more than 97% of the high-cardinality scanners observed in the baseline.</p>
+    <p class="lede" style="margin-top:16px;margin-bottom:0"><b>Scope:</b> the monitor evaluates blocked pf events indexed in <span class="mono">wazuh-alerts-*</span> for the protected VIP set. It measures destination-port breadth separately for each source IP, protocol, and TCP flag value across that set. Target count remains alert context rather than a gate: requiring exactly one target would have suppressed more than 97% of the high-cardinality scanners observed in the baseline.</p>
   </section>
 
 
@@ -190,9 +191,9 @@
     <h2>Why the threshold is 30</h2>
     <p class="lede">The threshold came from measurement, not intuition — at the monitor’s true 5-minute granularity:</p>
     <div class="grid">
-      <div class="card"><h3>Background</h3><p>Ordinary internet scanning peaks at <b>14</b> unique ports per 5-min window (median <b>1</b>).</p></div>
-      <div class="card"><h3>Commercial scanner</h3><p>A known internet-wide scanner (Modat) reaches <b>21</b>.</p></div>
-      <div class="card tell"><h3>Threshold 30</h3><p>Sits in <b>empty space</b> above ordinary background and Modat's observed ceiling, yet below every aggressive single-source scan observed during validation and live monitoring. Expected background-only alert volume: <b>~0/day</b>.</p></div>
+      <div class="card"><h3>Background</h3><p>In the six-hour sample, ordinary internet scanning peaked at <b>14</b> unique ports per 5-min window (median <b>1</b>).</p></div>
+      <div class="card"><h3>Commercial scanner</h3><p>A known internet-wide scanner (Modat) reached <b>21</b> in the same sample.</p></div>
+      <div class="card tell"><h3>Threshold 30</h3><p>Above ordinary background and Modat's observed ceiling, and below the controlled SYN result and all five reviewed production alerts. <b>No background threshold crossings in the six-hour sample.</b></p></div>
     </div>
     <div class="term" style="margin-top:20px">
       <div class="term-head"><span class="term-host siem">separation check</span><span class="term-what">6h sample &middot; true 5-min granularity</span></div>
@@ -201,13 +202,13 @@ buckets at &gt;=15 unique ports    117   <span class="hl-atk">all 117 were Modat
 anything else exceeding 14        0</span></pre>
     </div>
     <p class="lede" style="margin-top:16px">That is the argument for 30 in the corrected sample: ordinary background never exceeded 14 ports; only identified Modat buckets occupied 15–21; and no observation landed between 22 and 29. The sample establishes separation, not a permanent law of internet traffic.</p>
-    <p class="lede" style="margin-top:22px">A first attempt used <span class="mono">100</span>, derived from 24-hour data and applied to a 5-minute window — it could never fire. Catching that (it shadow-ran 39h with zero alerts) and correcting it is the point: the threshold is <em>measured</em>, and a wrong one was found by watching it, not by guessing.</p>
+    <p class="lede" style="margin-top:22px">A first attempt used <span class="mono">100</span>, derived from 24-hour data and applied to a 5-minute window. It produced no alerts during a 39-hour shadow run. The later 34-, 67-, and 91-port results illustrate the lower-volume scans that threshold would miss; larger scans can still cross 100. Re-measuring at five-minute granularity corrected the basis for tuning.</p>
   </section>
 
   <section>
     <p class="kicker">The evidence chain</p>
     <h2>The scan, then what the SIEM saw</h2>
-    <p class="lede">Each validation case pairs the tested method with recorded indexer output. Exact commands are shown where preserved; the slow mixed-flag sequence is labeled as public-safe pseudocode. All scans ran from an authorized test host against a monitored VIP.</p>
+    <p class="lede">Each validation case pairs the tested method with a summary of recorded results. Exact commands are shown where preserved; the slow mixed-flag sequence is labeled as public-safe pseudocode. All scans ran from an authorized test host against a monitored VIP.</p>
 
     <div class="steps">
 
@@ -222,8 +223,8 @@ Nmap done: 1 IP address (1 host up) scanned in 3.07 seconds</span></pre></div>
         <pre><span class="out">bucket_keys: ["<span class="hl-atk">198.51.100.30</span>","tcp","S"]
 raw_events: 171   unique_ports: <span class="hl-trust">91</span>   threshold: 30   crossed: true
 alerts: <span class="hl-trust">1</span>   state: ACTIVE -&gt; COMPLETED   latency: ~1m53s   error: none</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>91 unique ports crossed the threshold with exact attribution, and the corrected schedule produced <b>one alert rather than five duplicate evaluations</b>.</span></div>
-        <div class="proves"><span class="arw">limits</span><span>Nmap targeted 100 ports, while pf recorded 171 events covering 91 unique ports. The cause was not isolated; the threshold result is unaffected, but pf event counts should not be treated as an exact measurement of scan size.</span></div>
+        <div class="proves"><span class="arw">proves</span><span>The monitor reported 91 unique ports attributed to the test source and recorded <b>one alert</b> on the five-minute schedule.</span></div>
+        <div class="proves"><span class="arw">limits</span><span>Nmap targeted 100 ports, while the indexed pf data contained 171 events and a cardinality result of 91. The cause of the difference was not isolated; the threshold result is unaffected, but indexed counts should not be treated as an exact measurement of scan size.</span></div>
       </div>
 
       <div class="step">
@@ -236,15 +237,15 @@ alerts: <span class="hl-trust">1</span>   state: ACTIVE -&gt; COMPLETED   latenc
         <pre><span class="out">rule=100346/L10  TCP FIN scan
 rule=100347/L10  TCP Xmas scan
 rule=100348/L10  TCP NULL scan
-<span class="hl-atk"># cardinality monitor: 0</span> — the firewall never logs these flags</span></pre></div>
+<span class="hl-atk"># cardinality monitor: 0</span> — no matching FIN / Xmas / NULL events in the queried pf index</span></pre></div>
         <div class="proves"><span class="arw">proves</span><span>For the six TCP scan families tested at burst rates, at least one deployed layer detected each. That is measured coverage for those cases—not a claim of universal complementarity.</span></div>
         <div class="flow-scroll" style="padding:0 20px 18px">
           <table style="width:100%;border-collapse:collapse;font-size:.86rem;min-width:620px">
             <thead><tr style="text-align:left;border-bottom:1px solid var(--line)">
               <th style="padding:7px 10px 7px 0">Scan</th>
-              <th style="padding:7px 10px">pf logs</th>
+              <th style="padding:7px 10px">Indexed pf events</th>
               <th style="padding:7px 10px">Cardinality monitor</th>
-              <th style="padding:7px 0 7px 10px">Suricata scan rule</th>
+              <th style="padding:7px 0 7px 10px">Wazuh rule for Suricata scan</th>
             </tr></thead>
             <tbody>
               <tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px 7px 0">SYN</td><td style="padding:7px 10px">yes</td><td style="padding:7px 10px"><b>fires at &ge;30</b></td><td style="padding:7px 0 7px 10px">—</td></tr>
@@ -256,13 +257,13 @@ rule=100348/L10  TCP NULL scan
             </tbody>
           </table>
         </div>
-        <div class="proves"><span class="arw">and the correction</span><span>An earlier review of my own notes recorded this gap wrongly, and wrongly in the <b>reassuring</b> direction: it assumed a 10-port scan of 5 SYN + 5 FIN would produce two buckets of five, each merely under threshold. It does not. The non-SYN portion forms <b>no bucket at all</b>, because pf never logs those flags. The practical consequence is more severe than the note claimed — <b>lowering the threshold cannot compensate</b>, at any value, because only the SYN portion is ever visible to the monitor.</span></div>
-        <div class="proves" style="margin-top:12px"><span class="arw">worth naming</span><span>The complementarity across these six is <b>accidental, not designed</b>. Nobody chose pf's flag handling to align with Suricata's signature set. It is a property to preserve deliberately and re-verify whenever either layer changes — not an architectural guarantee to rely on.</span></div>
-        <div class="proves"><span class="arw">limits</span><span>UDP remained untested, and the next test showed that careful pacing can still stay below every elevated layer.</span></div>
+        <div class="proves"><span class="arw">visibility</span><span>With the visibility observed here, a 5-SYN + 5-FIN scan would contribute only the five SYN ports to the monitor. Lowering the threshold could detect that visible portion, but <b>cannot recover the missing FIN evidence</b>. Absence from the queried index does not isolate whether the loss occurred at the firewall, forwarding, decoding, or alert indexing. OPNsense logging depends on the matching rules and logging settings. <a href="https://docs.opnsense.org/manual/logging_firewall.html" style="color:var(--trust-ink)">OPNsense logging behavior &rarr;</a></span></div>
+        <div class="proves" style="margin-top:12px"><span class="arw">coverage</span><span>The combined coverage across these six burst tests is an observed property of this deployment. Re-verify it whenever firewall rules, log collection, or detection rules change.</span></div>
+        <div class="proves"><span class="arw">limits</span><span>UDP remained untested. The next test combined mixed flags, suppressed retries, and pacing, and stayed below every elevated threshold.</span></div>
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">03</span><h3 class="step-title">Slow, paced scan → the honest gap</h3><span class="host-tag atk">nmap</span></div>
+        <div class="step-head"><span class="step-num">03</span><h3 class="step-title">Paced mixed-flag scan → visibility and threshold gap</h3><span class="host-tag atk">nmap</span></div>
         <div class="term"><div class="term-head"><span class="term-host atk">attacker</span><span class="term-what">public-safe pseudocode · 32 ports · 8 per flag family</span></div>
         <pre><span class="cmd">for i in {0..7}; do
   nmap -sS -Pn -n --max-retries 0 -p &lt;next-SYN-port&gt;  198.51.100.36
@@ -273,9 +274,10 @@ rule=100348/L10  TCP NULL scan
 done</span></pre></div>
         <div class="term siem"><div class="term-head"><span class="term-host siem">wazuh-alerts</span><span class="term-what">what fired</span></div>
         <pre><span class="out">100340/L6 floor: <span class="hl-atk">8</span>   pf escalations 100341–100343: 0
-Suricata scan rules 100346–100348: 0   cardinality alerts: 0
+Wazuh rules for Suricata scans 100346–100348: 0   cardinality alerts: 0
 highest level reached: 6</span></pre></div>
-        <div class="proves"><span class="arw">proves</span><span>The corrected 32-port mixed-flag test—eight SYN, FIN, Xmas, and NULL probes—stayed below every elevated threshold. A <em>careless</em> version using nmap's default retransmission reached level 12; the demonstrated gap requires suppressed retries and careful pacing. It defines the long-window monitor to build next.</span></div>
+        <div class="proves"><span class="arw">proves</span><span>The 32-port mixed-flag test—eight ports per flag family—stayed below every elevated threshold with retries suppressed and probes paced. A version using nmap's default retransmission reached level 12. These results demonstrate the combined test's outcome; they do not isolate pacing as the cause.</span></div>
+        <div class="proves"><span class="arw">limits</span><span>Only <b>eight SYN ports total</b> were visible in the indexed pf data. Extending the window while keeping the threshold at 30 would still miss this test. A separate pacing test should send at least 30 distinct, visible ports in the same source/protocol/flag bucket across multiple five-minute windows, with fewer than 30 in each, to evaluate a longer-window detector.</span></div>
       </div>
 
     </div>
@@ -303,19 +305,19 @@ highest level reached: 6</span></pre></div>
       </tbody>
     </table>
     </div>
-    <p class="lede" style="margin-top:20px">Two different numbers, worth keeping apart. The forecast was <b>~0/day from ordinary background</b>; the observed <b>~1/day</b> is the arrival rate of genuine scans, which that forecast did not predict. Among the <b>five production alerts reviewed from August 16–20, 2026</b>, none was analyst-labeled a false positive. The smallest reviewed alert contained 34 estimated ports; ordinary background in the corrected sample topped out at 14.</p>
+    <p class="lede" style="margin-top:20px">The six-hour baseline sample contained <b>no ordinary-background threshold crossings</b>. Separately, among the <b>five production alerts reviewed from August 16–20, 2026</b>, none was analyst-labeled a false positive. These observations do not establish a long-term daily alert rate or false-positive rate. The smallest reviewed alert contained 34 estimated ports; ordinary background in the corrected sample topped out at 14.</p>
     <p class="lede">The port column is an OpenSearch cardinality estimate, not an exact packet count. The monitor's <span class="mono">precision_threshold</span> is 1,000, so the 1,484-port result is sufficient proof of threshold crossing but should not be read as an exact scan size. <a href="https://docs.opensearch.org/latest/aggregations/metric/cardinality/" style="color:var(--trust-ink)">OpenSearch cardinality behavior &rarr;</a></p>
   </section>
 
   <section>
     <p class="kicker">The cost of zero</p>
-    <h2>What a clean false-positive rate buys, and what it spends</h2>
-    <p class="lede">&ldquo;Zero false positives&rdquo; is only half a result. A threshold is a trade, and this one was bought with two things worth stating plainly.</p>
+    <h2>What the reviewed alerts leave out</h2>
+    <p class="lede">Zero false positives among five reviewed alerts is a limited observation. The detector also excludes some real scanning, and its alerts still need an operational notification path.</p>
     <div class="split">
       <div class="card flaw">
         <h3>It is priced in reduced recall</h3>
         <p>The threshold was set to <b>30</b> partly to clear Modat's observed ceiling of <b>21</b>. That deliberately excludes a known, real, distributed scanner &mdash; one with a cardinality estimate of <b>63,820 distinct destination ports in 24 hours</b> across 79 source addresses.</p>
-        <p>Per-source, five-minute cardinality does not alert on that behavior because every observed source-window stays below the line. The clean alert rate and this blind spot are the <b>precision–recall tradeoff</b> described from two sides. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
+        <p>Per-source, five-minute cardinality did not alert on that behavior because every observed source-window stayed below the line. Excluding those scans illustrates a <b>precision–recall tradeoff</b>; the review of five alerts does not quantify recall. <a href="modat-distributed-scanner.html" style="color:var(--attack-ink)">The scanner that proves it &rarr;</a></p>
       </div>
       <div class="card flaw">
         <h3>&ldquo;Live&rdquo; means dashboard-only</h3>
@@ -330,16 +332,20 @@ highest level reached: 6</span></pre></div>
   <section>
     <p class="kicker">Reproducibility</p>
     <h2>The monitor itself</h2>
-    <p class="lede">Everything above rests on one OpenSearch Alerting monitor. It is published here in full, sanitized only for internal addresses and the monitor name, so the thresholds and aggregations can be read rather than taken on trust.</p>
+    <p class="lede">The cardinality detector uses the OpenSearch Alerting monitor published here in full, sanitized for internal addresses and the monitor name. The JSON exposes its filters, grouping, time range, threshold, and actions. The pf escalation and Suricata detections shown above are separate rules.</p>
+    <p class="lede"><b>Evidence available here:</b> preserved scan commands, result summaries, and the monitor JSON. The original baseline query with exact sample dates and grouping, raw alert documents, and the exact-enumeration query are not included. The baseline and enumeration findings are reported results; this page does not provide enough evidence to reproduce those historical measurements independently.</p>
     <div class="term">
       <div class="term-head"><span class="term-host siem">vertical-scan-monitor-sanitized.json</span><span class="term-what">the parts that decide</span></div>
       <pre><span class="out">schedule      every 5 MINUTES
+lookback      previous 5 MINUTES at each scheduled evaluation
 composite     srcip &middot; protocol &middot; tcp_flags
 unique_ports  cardinality(data.dstport)  <span class="hl-atk">precision_threshold: 1000</span>
 unique_targets cardinality(data.dstip)   precision_threshold: 10
 trigger       params.unique_ports &gt;= 30        severity 2
 actions       []                               &larr; records, notifies nobody</span></pre>
     </div>
+    <p class="lede" style="margin-top:16px"><b>Window-boundary limitation:</b> the monitor looks back five minutes on a five-minute schedule. From that configuration, 20 distinct ports just before a scheduled cutoff and 20 different ports just after it could remain below threshold in both evaluations, even if all 40 arrive within seconds in the same source/protocol/flag bucket. This is a limitation inferred from the published query, not a recorded test result.</p>
+    <p class="lede">A shorter evaluation interval with the same lookback would create overlapping windows and reduce this boundary gap. Repeated evaluations do not necessarily create duplicate alerts: OpenSearch maintains ongoing bucket alerts through deduplication. The one-alert validation result above does not establish that a faster schedule would create five alerts. <a href="https://docs.opensearch.org/latest/observing-your-data/alerting/monitors/" style="color:var(--trust-ink)">OpenSearch monitor and alert behavior &rarr;</a></p>
     <p class="lede" style="margin-top:16px">One consequence is worth stating because it changes how every count above should be read: <span class="mono">unique_ports</span> is an <b>approximate</b> cardinality aggregation. OpenSearch documents counts below the precision threshold (here 1,000) as &ldquo;expected to be close to accurate,&rdquo; not exact. The two alerts that each reported <b>34 ports</b> have since been corroborated by exact enumeration of the underlying pf events: the first contained 34 events across 34 distinct ports to one target; the second contained 68 events covering 34 distinct ports across two targets. Both 34-port threshold crossings therefore stand as exact indexed-event counts. The 67- and 813-port estimates remain comfortably above the trigger, while the <b>1,484-port</b> result sits above the precision threshold and is likely the least accurate; in all three cases, the margin over <span class="mono">params.unique_ports &gt;= 30</span> is too wide for estimation error to plausibly change the outcome.</p>
     <p class="lede" style="margin-top:14px"><a href="vertical-scan-monitor-sanitized.json" style="color:var(--attack-ink)">Download the full monitor definition &rarr;</a></p>
   </section>
@@ -349,17 +355,17 @@ actions       []                               &larr; records, notifies nobody</
     <p class="kicker">What it demonstrates</p>
     <h2>The method, not just the result</h2>
     <div class="grid">
-      <div class="card"><h3>Measurement-driven</h3><p>A seven-day study exposed the grain error; the replacement threshold came from 5,459 source-windows measured at the true five-minute grain.</p></div>
-      <div class="card"><h3>Validation over assertion</h3><p>Commands, queries, alert documents, and recorded results are kept together, with uncertainty identified where the cause was not isolated.</p></div>
-      <div class="card"><h3>Adversarial testing</h3><p>Tested for evasion — mixed flags, stealth flags, slow pacing — each traced to which layer caught it.</p></div>
-      <div class="card tell"><h3>Honest gaps</h3><p>Slow pacing and distributed-source evasion are documented with evidence and turned into concrete next requirements.</p></div>
+      <div class="card"><h3>Measurement-driven</h3><p>A seven-day study exposed the grain error; the replacement threshold came from 5,459 source-windows in a six-hour sample at five-minute granularity.</p></div>
+      <div class="card"><h3>Validation evidence</h3><p>Preserved commands, result summaries, and the monitor definition are published together. Missing historical queries and raw alert documents limit independent reproduction.</p></div>
+      <div class="card"><h3>Adversarial testing</h3><p>Burst scan families and a paced mixed-flag sequence were tested against the deployed layers. The combined test does not isolate the effect of pacing.</p></div>
+      <div class="card tell"><h3>Detection gaps</h3><p>Observed visibility and distributed-source gaps inform the next tests, alongside a window-boundary limitation inferred from the monitor definition.</p></div>
     </div>
   </section>
 
 
   <section>
     <p class="kicker">Takeaway</p>
-    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fires on real scans, ignores the measured ordinary background, and has its blind spots written down</b> rather than hidden. Across five reviewed production alerts it produced zero analyst-labeled false positives — recording to a dashboard, not yet paging anyone. The threshold is measured, slow and distributed evasion are bounded, and the cost of the clean alert rate is stated alongside the rate itself.</p>
+    <p style="font-size:1.06rem;line-height:1.75;color:var(--ink);max-width:66ch;margin:0"><b>The detector fired on real scans and produced no ordinary-background threshold crossings in the six-hour sample.</b> None of the five reviewed production alerts was analyst-labeled a false positive. It records to a dashboard without paging anyone. Further validation needs to isolate pacing, test window boundaries, and address visibility and distributed-source gaps.</p>
   </section>
 
   <footer>
